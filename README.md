@@ -16,7 +16,7 @@ An AI-powered web platform that helps individuals monitor, analyze, and improve 
 
 ```
 ├── client/             # React Frontend (Vite + Tailwind CSS)
-├── server/             # Node.js Backend (Express.js)
+├── server/             # Node.js Backend (Express.js + MongoDB)
 ├── audio-service/      # Python Microservice (Flask + Whisper + Librosa + spaCy)
 └── README.md
 ```
@@ -26,8 +26,8 @@ An AI-powered web platform that helps individuals monitor, analyze, and improve 
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 18, Vite, Tailwind CSS, Recharts |
-| Backend | Node.js, Express.js, Sequelize ORM |
-| Database | PostgreSQL (prod) / SQLite (dev) |
+| Backend | Node.js, Express.js, Mongoose ODM |
+| Database | MongoDB |
 | AI/Audio | OpenAI Whisper, Librosa, spaCy, NLTK |
 | Deployment | Vercel (frontend), Render (backend) |
 
@@ -36,7 +36,7 @@ An AI-powered web platform that helps individuals monitor, analyze, and improve 
 ### Prerequisites
 - Node.js 18+
 - Python 3.10+
-- PostgreSQL (optional, SQLite used for dev)
+- MongoDB (local or MongoDB Atlas)
 
 ### Installation
 

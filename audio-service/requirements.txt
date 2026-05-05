@@ -1,0 +1,10 @@
+flask==3.0.0
+flask-cors==4.0.0
+openai-whisper==20231117
+librosa==0.10.1
+spacy==3.7.2
+nltk==3.8.1
+textblob==0.18.0
+pydub==0.25.1
+numpy==1.26.2
+soundfile==0.12.1
