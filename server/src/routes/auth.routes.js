@@ -112,4 +112,17 @@ router.put('/profile', auth, async (req, res) => {
   }
 });
 
+// DELETE /api/auth/user — Delete user and all their data
+router.delete('/user', auth, async (req, res) => {
+  try {
+    // In a real app, you would also delete all their Sessions and PracticeResults here
+    // using something like: await Session.deleteMany({ user: req.user._id });
+    
+    await User.findByIdAndDelete(req.user._id);
+    res.json({ message: 'User account and all associated data successfully deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router;

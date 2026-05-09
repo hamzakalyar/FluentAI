@@ -15,7 +15,6 @@ An AI-powered web platform that helps individuals monitor, analyze, and improve 
 ## 🏗️ Architecture
 
 ```
-├── client/             # React Frontend (Vite + Tailwind CSS)
 ├── server/             # Node.js Backend (Express.js + MongoDB)
 ├── audio-service/      # Python Microservice (Flask + Whisper + Librosa + spaCy)
 └── README.md
@@ -25,7 +24,6 @@ An AI-powered web platform that helps individuals monitor, analyze, and improve 
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 18, Vite, Tailwind CSS, Recharts |
 | Backend | Node.js, Express.js, Mongoose ODM |
 | Database | MongoDB |
 | AI/Audio | OpenAI Whisper, Librosa, spaCy, NLTK |
@@ -44,11 +42,6 @@ An AI-powered web platform that helps individuals monitor, analyze, and improve 
 # Clone the repo
 git clone https://github.com/hamzakalyar/AI-Based-Speech-Fluency-Monitoring-Practice-System.git
 cd AI-Based-Speech-Fluency-Monitoring-Practice-System
-
-# Frontend
-cd client
-npm install
-npm run dev
 
 # Backend (new terminal)
 cd server

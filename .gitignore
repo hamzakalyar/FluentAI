@@ -11,9 +11,6 @@ env/
 .env.local
 .env.production
 
-# Build output
-client/dist/
-client/build/
 
 # Uploads (audio files)
 server/uploads/*
@@ -41,3 +38,6 @@ npm-debug.log*
 *.sqlite
 *.sqlite3
 *.db
+
+# Frontend (Excluded per user request)
+client/

@@ -1,0 +1,303 @@
+# Audio Analysis Pipeline — Complete Documentation
+# ==================================================
+# AI-Based Speech Fluency Monitoring & Practice System
+# Team: Mudassir Riaz, Hassan Ali, M. Hamza Imtiaz
+
+
+# ====================================================================
+# OVERVIEW: WHAT HAPPENS WHEN A USER RECORDS THEIR VOICE
+# ====================================================================
+#
+# Step 1: User records speech in browser (React frontend)
+# Step 2: Audio uploaded to Express backend as WAV file
+# Step 3: Express sends WAV to this Python service (Flask, port 5000)
+# Step 4: Python runs the FULL ANALYSIS PIPELINE:
+#
+#   WAV Audio
+#     │
+#     ├──► whisper_service.py   → Transcribes audio to text + word timestamps
+#     │
+#     ├──► stutter_detector.py  → Finds repetitions, pauses, fillers, calculates WPM
+#     │
+#     ├──► nlp_analyzer.py      → POS tagging, vocabulary complexity, avoidance detection
+#     │
+#     ├──► phoneme_mapper.py    → Maps stuttered words to phonemes, finds weak sounds
+#     │
+#     └──► practice_generator.py → Generates exercises for weak sounds
+#
+# Step 5: Results sent back to Express → saved to MongoDB → shown to user
+
+
+# ====================================================================
+# FILE 1: whisper_service.py — SPEECH TO TEXT
+# ====================================================================
+#
+# WHAT IT DOES:
+#   Takes a WAV audio file and converts it to text using OpenAI's Whisper model.
+#   Critically, it provides WORD-LEVEL TIMESTAMPS — the exact start and end time
+#   of every single word spoken.
+#
+# WHY WORD TIMESTAMPS MATTER:
+#   Without timestamps, we just get: "I I I want to go"
+#   With timestamps, we get:
+#     "I"    at 0.00s - 0.15s
+#     "I"    at 0.25s - 0.40s  ← REPEATED (stutter!)
+#     "I"    at 0.50s - 0.65s  ← REPEATED (stutter!)
+#     "want" at 0.80s - 1.10s
+#     "to"   at 1.15s - 1.30s
+#     "go"   at 1.35s - 1.55s
+#
+#   This lets us detect: repeated words, gaps between words, speaking speed.
+#
+# WHISPER MODEL:
+#   We use the "base" model (~140MB, runs locally, FREE, no API key).
+#   Model is loaded ONCE when the server starts and reused for all requests.
+#
+# KEY FUNCTION:
+#   transcribe_audio(audio_path)
+#     Input:  Path to WAV file
+#     Output: { text: "full transcript", words: [{word, start, end}, ...], duration: 15.3 }
+#
+# TECHNOLOGY: OpenAI Whisper (open source, Transformer-based ASR model)
+
+
+# ====================================================================
+# FILE 2: stutter_detector.py — CORE STUTTER DETECTION
+# ====================================================================
+#
+# WHAT IT DOES:
+#   Analyzes the transcript + raw audio to detect 4 types of stuttering.
+#   Then combines everything into a FLUENCY SCORE (0-100).
+#
+# DETECTOR 1: REPETITION DETECTION
+#   How: Walk through Whisper's word list. If word[i] == word[i-1], it's a repetition.
+#   Example: ["I", "I", "I", "want"] → "I" repeated 3 times (1 repetition event)
+#   Output: Count of repetition events + which words were repeated
+#
+# DETECTOR 2: PAUSE DETECTION (uses Librosa)
+#   How: librosa.effects.split() finds all non-silent intervals in the audio.
+#        The GAPS between intervals are silences. If gap > 500ms → abnormal pause.
+#   Why 500ms? Normal breathing pauses are 200-400ms. Over 500ms mid-sentence
+#        usually indicates a BLOCK (a type of stutter where the person freezes).
+#   Output: Count of pauses + position + duration of each
+#
+# DETECTOR 3: FILLER DETECTION
+#   How: Check each word against a list of known fillers: "um", "uh", "er", "ah",
+#        "like", "basically", "you know", etc.
+#   Note: "like" is tricky — "I like cats" is valid but "it was like um" is a filler.
+#        The NLP layer handles this distinction (see nlp_analyzer.py).
+#   Output: Count of fillers + list of which ones were used
+#
+# DETECTOR 4: SPEECH RATE (WPM)
+#   How: Total words divided by duration in minutes.
+#   Normal: 120-150 WPM
+#   Below 100 WPM: Likely disfluent (many pauses/repetitions slowing speech)
+#   Above 180 WPM: Rushed speech
+#   Output: WPM number + assessment (below_normal / normal / above_normal)
+#
+# FLUENCY SCORE FORMULA:
+#   score = 100 - (repetition_events × 5) - (pauses × 4) - (fillers × 2) - (WPM_penalty)
+#   Clamped between 0 and 100.
+#
+#   Example: 3 repetitions, 2 pauses, 4 fillers, 95 WPM
+#   score = 100 - 15 - 8 - 8 - 0.5 = 68.5
+#
+# KEY FUNCTION:
+#   analyze_audio(audio_path, transcript_data)
+#     Input:  WAV file path + Whisper output
+#     Output: { fluencyScore, speechRateWPM, repetitionCount, pauseCount,
+#               fillerCount, repetitions: [...], pauses: [...], fillers: [...] }
+#
+# TECHNOLOGY: Librosa (audio signal processing library)
+
+
+# ====================================================================
+# FILE 3: nlp_analyzer.py — LINGUISTIC ANALYSIS
+# ====================================================================
+#
+# WHAT IT DOES:
+#   Adds LINGUISTIC INTELLIGENCE on top of stutter detection.
+#   Without NLP: "You stuttered 3 times"
+#   With NLP:    "You stuttered 3 times, MOSTLY ON VERBS STARTING WITH S"
+#
+# ANALYSIS 1: POS TAGGING (Part-of-Speech)
+#   How: Uses spaCy to tag every word as NOUN, VERB, ADJ, PRON, DET, etc.
+#   Why: Research shows stuttering occurs more on CONTENT WORDS (nouns, verbs)
+#        than FUNCTION WORDS (the, is, a). Knowing this helps target practice.
+#   Example: User stutters on "store"(NOUN), "start"(VERB), "sit"(VERB)
+#            → Dominant stutter type: VERB
+#            → Practice exercises will include extra verb-heavy sentences
+#
+# ANALYSIS 2: VOCABULARY COMPLEXITY
+#   Metrics:
+#     - Type-Token Ratio (TTR): unique words / total words (0.4-0.7 is normal)
+#     - Average Word Length: mean characters per word (4.0-5.5 is normal)
+#     - Lexical Density: content words / total words (0.4-0.6 is normal)
+#   Why: People who stutter often SIMPLIFY their vocabulary to avoid hard words.
+#        They say "nice" instead of "spectacular" because they know "sp-" is hard.
+#        This is called AVOIDANCE BEHAVIOR.
+#
+# ANALYSIS 3: AVOIDANCE DETECTION
+#   If TTR < 0.35 AND avg word length < 3.8, the system flags:
+#   "Your vocabulary diversity is lower than expected. You may be avoiding complex words."
+#
+# ANALYSIS 4: FILLER CONTEXT
+#   Distinguishes "I like cats" (valid verb) from "it was like um" (filler).
+#   Uses spaCy's dependency parser to check if "like" is used as a VERB or not.
+#
+# KEY FUNCTION:
+#   analyze_transcript(text, stuttered_words)
+#     Input:  Transcript text + list of stuttered words
+#     Output: { posDistribution, stutteredWordTypes, dominantStutterType,
+#               complexity: {TTR, avgWordLength, lexicalDensity},
+#               avoidanceDetected, vocabularyLevel }
+#
+# TECHNOLOGY: spaCy (en_core_web_sm model, ~12MB)
+
+
+# ====================================================================
+# FILE 4: phoneme_mapper.py — SOUND IDENTIFICATION
+# ====================================================================
+#
+# WHAT IT DOES:
+#   Maps stuttered words to their PHONEMES (individual speech sounds)
+#   to identify the user's WEAK SOUNDS.
+#
+# WHY PHONEME MAPPING?
+#   When a user stutters on "store", "street", "start" — the real problem
+#   isn't those specific words. It's the /S/ SOUND at the beginning.
+#   By finding the pattern, we can generate targeted practice exercises.
+#
+# HOW IT WORKS:
+#   Uses the CMU Pronouncing Dictionary (134,000+ English words):
+#     "store"  → S T AO R     (first sound: S)
+#     "the"    → DH AH        (first sound: DH — the "th" in "the")
+#     "think"  → TH IH NG K   (first sound: TH — the "th" in "think")
+#     "run"    → R AH N        (first sound: R)
+#
+#   We take the FIRST phoneme (onset) because stuttering most commonly
+#   occurs at the BEGINNING of a word. "s-s-store" not "sto-sto-store".
+#
+# WEAK SOUND IDENTIFICATION:
+#   After mapping all stuttered words to their onset phonemes, we count:
+#     /S/  appeared 12 times → #1 weak sound
+#     /TH/ appeared 8 times  → #2 weak sound
+#     /R/  appeared 6 times  → #3 weak sound
+#   Top 3 are stored in the user's profile and used for practice generation.
+#
+# KEY FUNCTIONS:
+#   word_to_phonemes(word) → Full phoneme list, e.g., ['S','T','AO','R']
+#   get_onset_phoneme(word) → First phoneme only, e.g., 'S'
+#   identify_weak_sounds(stuttered_words) → { weakSounds, top3 }
+#
+# TECHNOLOGY: NLTK CMU Pronouncing Dictionary (Carnegie Mellon University)
+
+
+# ====================================================================
+# FILE 5: practice_generator.py — EXERCISE CREATION
+# ====================================================================
+#
+# WHAT IT DOES:
+#   Generates personalized practice sentences based on the user's weak sounds.
+#
+# EXERCISE DATABASE:
+#   Contains 500+ sentences organized by:
+#     - 10 SOUNDS: S, TH, R, L, K, B, P, F, M, N
+#     - 3 DIFFICULTY LEVELS per sound:
+#
+#   EASY (5-8 words, simple vocabulary):
+#     [S] "The sun is shining today."
+#     [R] "The red rose is very pretty."
+#     [TH] "Think about that for a moment."
+#
+#   MEDIUM (8-15 words, multiple target sounds):
+#     [S] "Seven students study science at school every day."
+#     [R] "Robert ran rapidly around the rural road yesterday."
+#     [TH] "They thought thoroughly about the theory before deciding."
+#
+#   HARD (tongue twisters, dense target sounds):
+#     [S] "She sells seashells by the seashore every single Saturday."
+#     [R] "Around the rugged rocks the ragged rascals ran a race."
+#     [TH] "The thirty-three thieves thought they thrilled the throne."
+#
+# HOW EXERCISES ARE SELECTED:
+#   1. System knows user's weak sounds (from phoneme_mapper): S, TH, R
+#   2. User selects difficulty: "medium"
+#   3. get_exercises(["S","TH","R"], "medium", 5) is called
+#   4. For each sound, pick 5 random sentences from that sound's medium list
+#   5. For each sentence, identify TARGET WORDS (words starting with that sound)
+#   6. Return shuffled list of exercises
+#
+# TARGET WORD IDENTIFICATION:
+#   For "Seven students study science at school" targeting /S/:
+#   Each word is checked: does its first phoneme = S?
+#     "seven" → S EH V AH N → onset = S ✓
+#     "students" → S T UW D AH N T S → onset = S ✓
+#     "study" → S T AH D IY → onset = S ✓
+#     "science" → S AY AH N S → onset = S ✓
+#     "at" → AE T → onset = AE ✗
+#     "school" → S K UW L → onset = S ✓
+#   Target words: ["seven", "students", "study", "science", "school"]
+#
+# PRACTICE FLOW:
+#   User sees: "Seven students study science at school every day."
+#   Target words highlighted: [seven] [students] [study] [science] [school]
+#   User clicks "Practice Now" → records themselves reading the sentence
+#   Recording is analyzed → if they stuttered on 2 of 5 target words → score: 60%
+#
+# KEY FUNCTION:
+#   get_exercises(weak_sounds, difficulty, count)
+#     Input:  List of weak sounds + difficulty + how many
+#     Output: [{ targetSound, sentence, targetWords, difficulty }, ...]
+#
+# SOURCES: Real speech therapy articulation drills and phonology exercises
+
+
+# ====================================================================
+# FILE 6: app.py — FLASK API (Wires Everything Together)
+# ====================================================================
+#
+# ENDPOINTS:
+#
+# GET /health
+#   Returns: { status: "ok", services: { whisper, stutter_detector, ... } }
+#   Purpose: Check if the service is running
+#
+# POST /analyze
+#   Input: WAV audio file in 'audio' field
+#   Process: Runs ALL 4 stages (Whisper → Stutter → NLP → Phonemes)
+#   Returns: {
+#     transcript: { text, words },
+#     metrics: { fluencyScore, speechRateWPM, repetitions, pauses, fillers },
+#     nlpAnalysis: { posDistribution, complexity, avoidanceDetected },
+#     weakSoundsDetected: [{ sound, frequency, words }],
+#     top3WeakSounds: ["S", "TH", "R"]
+#   }
+#
+# POST /generate-exercises
+#   Input: JSON { weakSounds: ["S","TH"], difficulty: "easy", count: 5 }
+#   Returns: { exercises: [{ targetSound, sentence, targetWords }, ...] }
+#
+# GET /available-sounds
+#   Returns: List of all sounds with exercise counts per difficulty
+
+
+# ====================================================================
+# TECHNOLOGIES USED — SUMMARY
+# ====================================================================
+#
+# | Library    | Version  | Purpose                              | AI Type           |
+# |------------|----------|--------------------------------------|-------------------|
+# | Whisper    | latest   | Speech-to-text with word timestamps  | Deep Learning     |
+# | Librosa    | 0.10.1   | Audio signal analysis, pause detect   | Signal Processing |
+# | spaCy      | 3.7.2    | POS tagging, dependency parsing       | NLP               |
+# | NLTK       | 3.8.1    | CMU dictionary, phoneme mapping       | NLP               |
+# | TextBlob   | 0.18.0   | Sentiment analysis (future use)       | NLP               |
+# | Flask      | 3.0.0    | Web server for the microservice       | Web Framework     |
+#
+# IMPORTANT: No custom ML model training is needed!
+# - Whisper is pre-trained by OpenAI
+# - spaCy en_core_web_sm is pre-trained
+# - CMU Dictionary is pre-built
+# - Stutter detection uses RULE-BASED algorithms (thresholds + logic)
+# - The system "learns" about each user through DATA AGGREGATION across sessions
