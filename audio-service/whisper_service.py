@@ -97,9 +97,16 @@ def transcribe_audio(audio_path):
     # segment-level timing which is too coarse for stutter detection
     result = model.transcribe(
         audio_path,
-        word_timestamps=True,  # CRITICAL: gives us per-word timing
-        language="en",         # Force English for consistency
-        fp16=False             # Use FP32 for CPU compatibility
+        word_timestamps=True,              # CRITICAL: gives us per-word timing
+        language="en",                     # Force English for consistency
+        fp16=False,                        # Use FP32 for CPU compatibility
+        condition_on_previous_text=False,  # CRITICAL: Prevents Whisper from using context
+                                           # to "clean up" repetitions. Without this, 
+                                           # "I I I want" becomes "I want"
+        suppress_blank=False,              # Don't suppress blank/hesitation tokens
+        temperature=0.0,                   # Use greedy decoding for raw accuracy
+        no_speech_threshold=0.3,           # Lower threshold — keep more audio segments
+        compression_ratio_threshold=3.0    # Higher tolerance — don't skip "repetitive" segments
     )
     
     # Extract word-level data from Whisper's output

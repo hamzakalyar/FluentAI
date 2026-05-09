@@ -116,43 +116,22 @@ def detect_repetitions(words):
     }
 
 
-def detect_pauses(audio_path, min_pause_duration=0.5, silence_threshold=30):
+def detect_pauses(audio_path, min_pause_duration=0.3, silence_threshold=25):
     """
     Detect abnormally long pauses/silences in the audio.
     
-    Normal speech has ~200-400ms pauses between phrases (breathing).
-    Pauses > 500ms mid-sentence often indicate a BLOCK (type of stutter).
+    Normal speech has ~200-300ms pauses between phrases (breathing).
+    Pauses > 300ms mid-sentence often indicate a BLOCK (type of stutter).
     
     Uses Librosa to find silent intervals in the audio signal.
-    
-    Args:
-        audio_path (str): Path to WAV file
-        min_pause_duration (float): Minimum pause length in seconds to flag (default: 0.5s)
-        silence_threshold (int): dB threshold below which audio is considered silent (default: 30)
-    
-    Returns:
-        dict: {
-            'count': 3,
-            'total_duration_ms': 2100,
-            'pauses': [
-                {'position': 3.5, 'duration_ms': 850},
-                {'position': 7.2, 'duration_ms': 620},
-                {'position': 12.1, 'duration_ms': 630}
-            ]
-        }
-    
-    HOW librosa.effects.split() WORKS:
-    - Converts audio to amplitude envelope
-    - Finds intervals where amplitude is ABOVE the threshold (speech)
-    - Returns array of [start_sample, end_sample] for each speech segment
-    - The GAPS between these segments are the silent pauses
+    Threshold lowered to 300ms and 25dB to catch stuttering blocks.
     """
     try:
         # Load audio file
         audio, sr = librosa.load(audio_path, sr=16000)
         
         # Find non-silent intervals
-        # top_db=30 means anything 30dB below the peak is "silence"
+        # top_db=25 means anything 25dB below the peak is "silence" (more sensitive)
         intervals = librosa.effects.split(audio, top_db=silence_threshold)
         
         pauses = []
@@ -161,18 +140,15 @@ def detect_pauses(audio_path, min_pause_duration=0.5, silence_threshold=30):
             return {"count": 0, "total_duration_ms": 0, "pauses": []}
         
         for i in range(1, len(intervals)):
-            # Gap between end of previous speech and start of next speech
-            gap_start_sample = intervals[i - 1][1]  # end of previous segment
-            gap_end_sample = intervals[i][0]         # start of next segment
-            
-            # Convert samples to seconds
+            gap_start_sample = intervals[i - 1][1]
+            gap_end_sample = intervals[i][0]
             gap_duration = (gap_end_sample - gap_start_sample) / sr
             
             if gap_duration >= min_pause_duration:
-                position = gap_start_sample / sr  # position in seconds
+                position = gap_start_sample / sr
                 pauses.append({
                     "position": round(position, 2),
-                    "duration_ms": round(gap_duration * 1000)  # convert to milliseconds
+                    "duration_ms": round(gap_duration * 1000)
                 })
         
         total_duration = sum(p["duration_ms"] for p in pauses)
@@ -186,6 +162,102 @@ def detect_pauses(audio_path, min_pause_duration=0.5, silence_threshold=30):
     except Exception as e:
         print(f"❌ Pause detection error: {e}")
         return {"count": 0, "total_duration_ms": 0, "pauses": []}
+
+
+def detect_audio_level_repetitions(audio_path):
+    """
+    AUDIO-LEVEL repetition detection using signal analysis.
+    
+    This catches stutters that Whisper misses by analyzing the raw audio
+    for repetitive short speech bursts — the acoustic fingerprint of stuttering.
+    
+    HOW IT WORKS:
+    1. Split audio into short speech segments using librosa
+    2. If multiple very short segments (< 400ms) appear close together,
+       that's likely a stutter (e.g., "b-b-b-ball")
+    3. Also checks for segments with very similar energy profiles
+       (repeated syllables sound similar acoustically)
+    """
+    try:
+        audio, sr = librosa.load(audio_path, sr=16000)
+        
+        # Split into speech segments with sensitive threshold
+        intervals = librosa.effects.split(audio, top_db=25)
+        
+        if len(intervals) < 2:
+            return {"count": 0, "repetitions": []}
+        
+        repetitions = []
+        
+        # Convert intervals to durations and gaps
+        segments = []
+        for start, end in intervals:
+            duration_ms = (end - start) / sr * 1000
+            position = start / sr
+            segments.append({
+                "start": start,
+                "end": end,
+                "position": position,
+                "duration_ms": duration_ms
+            })
+        
+        # PATTERN 1: Detect clusters of very short speech bursts
+        # Stuttering creates rapid short bursts: "b-b-b-ball" = 4 short segments
+        i = 0
+        while i < len(segments):
+            # Look for consecutive short segments (< 400ms each)
+            cluster = []
+            j = i
+            while j < len(segments):
+                seg = segments[j]
+                if seg["duration_ms"] < 400:  # Short burst
+                    cluster.append(seg)
+                    j += 1
+                    # Check gap to next segment is small (< 300ms)
+                    if j < len(segments):
+                        gap = (segments[j]["start"] - seg["end"]) / sr * 1000
+                        if gap > 300:
+                            break
+                else:
+                    break
+            
+            # 3+ short bursts in a row = likely stuttering
+            if len(cluster) >= 3:
+                repetitions.append({
+                    "type": "sound_repetition",
+                    "position": round(cluster[0]["position"], 2),
+                    "burst_count": len(cluster),
+                    "details": f"Detected {len(cluster)} rapid speech bursts (likely syllable repetition)"
+                })
+                i = j
+            else:
+                i += 1
+        
+        # PATTERN 2: Detect unusually fragmented speech
+        # Normal speech: few long segments. Stuttered speech: many short segments
+        short_segments = [s for s in segments if s["duration_ms"] < 300]
+        total_segments = len(segments)
+        fragmentation_ratio = len(short_segments) / total_segments if total_segments > 0 else 0
+        
+        if fragmentation_ratio > 0.4 and total_segments > 5:
+            repetitions.append({
+                "type": "fragmented_speech",
+                "position": 0,
+                "burst_count": len(short_segments),
+                "details": f"Speech is highly fragmented ({int(fragmentation_ratio*100)}% short bursts) — indicates disfluency"
+            })
+        
+        return {
+            "count": len(repetitions),
+            "repetitions": repetitions,
+            "fragmentation_ratio": round(fragmentation_ratio, 2),
+            "total_segments": total_segments,
+            "short_segments": len(short_segments)
+        }
+    
+    except Exception as e:
+        print(f"❌ Audio-level repetition detection error: {e}")
+        return {"count": 0, "repetitions": [], "fragmentation_ratio": 0}
 
 
 def detect_fillers(words):
@@ -291,52 +363,52 @@ def calculate_speech_rate(words, duration):
     }
 
 
-def calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rate_data):
+def calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rate_data, audio_repetition_data=None):
     """
     Calculate a composite fluency score from 0 to 100.
     
-    SCORING FORMULA:
+    SCORING FORMULA (more aggressive to catch real stuttering):
     score = 100 - penalties
     
     Penalties:
-    - Each repetition EVENT:     -5 points  (e.g., "I-I-I" = 1 event = -5)
-    - Each abnormal pause:       -4 points
-    - Each filler word:          -2 points
-    - WPM below 100:             -1 point per 10 WPM below 100
-    - WPM above 180:             -1 point per 10 WPM above 180
-    
-    EXAMPLES:
-    - Perfect speech (no issues):                    100
-    - 3 repetitions, 2 pauses, 4 fillers, 95 WPM:   100 - 15 - 8 - 8 - 0.5 = 68.5
-    - 0 repetitions, 1 pause, 2 fillers, 130 WPM:   100 - 0 - 4 - 4 - 0 = 92
-    
-    Args:
-        repetition_data (dict): Output from detect_repetitions()
-        pause_data (dict): Output from detect_pauses()
-        filler_data (dict): Output from detect_fillers()
-        speech_rate_data (dict): Output from calculate_speech_rate()
-    
-    Returns:
-        float: Fluency score between 0 and 100
+    - Each word repetition EVENT:        -8 points
+    - Each audio-level repetition:       -6 points  (NEW: catches what Whisper misses)
+    - Each abnormal pause:               -5 points
+    - Each filler word:                  -3 points
+    - WPM below 100:                     -2 point per 10 WPM below 100
+    - High fragmentation ratio:          -10 points (NEW)
+    - Total pause duration > 3s:         -5 bonus penalty
     """
     score = 100.0
     
-    # Penalty for repetitions (-5 per event)
-    score -= repetition_data["count"] * 5
+    # Penalty for word-level repetitions (-8 per event)
+    score -= repetition_data["count"] * 8
     
-    # Penalty for abnormal pauses (-4 per pause)
-    score -= pause_data["count"] * 4
+    # Penalty for audio-level repetitions (-6 per event) — NEW
+    if audio_repetition_data:
+        score -= audio_repetition_data.get("count", 0) * 6
+        # Extra penalty for highly fragmented speech
+        frag_ratio = audio_repetition_data.get("fragmentation_ratio", 0)
+        if frag_ratio > 0.4:
+            score -= 10
+        elif frag_ratio > 0.25:
+            score -= 5
     
-    # Penalty for fillers (-2 per filler)
-    score -= filler_data["count"] * 2
+    # Penalty for abnormal pauses (-5 per pause)
+    score -= pause_data["count"] * 5
+    
+    # Extra penalty for excessive total pause time
+    if pause_data.get("total_duration_ms", 0) > 3000:
+        score -= 5
+    
+    # Penalty for fillers (-3 per filler)
+    score -= filler_data["count"] * 3
     
     # Penalty for abnormal speech rate
     wpm = speech_rate_data["wpm"]
     if wpm > 0 and wpm < 100:
-        # Below normal: -1 point for every 10 WPM below 100
-        score -= (100 - wpm) / 10
+        score -= (100 - wpm) / 5  # More aggressive: -2 per 10 WPM below 100
     elif wpm > 180:
-        # Too fast: -1 point for every 10 WPM above 180
         score -= (wpm - 180) / 10
     
     # Clamp between 0 and 100
@@ -349,37 +421,41 @@ def analyze_audio(audio_path, transcript_data):
     """
     MAIN FUNCTION — Run all detection algorithms on an audio recording.
     
-    This is the entry point called by the Flask API.
-    It orchestrates all 4 detectors and computes the fluency score.
-    
-    Args:
-        audio_path (str): Path to the WAV audio file
-        transcript_data (dict): Output from whisper_service.transcribe_audio()
-    
-    Returns:
-        dict: Complete stutter analysis results
+    Uses BOTH text-level (Whisper) AND audio-level (Librosa) analysis
+    to catch stuttering that either method alone would miss.
     """
     words = transcript_data.get("words", [])
     duration = transcript_data.get("duration", 0)
     
-    # Run all 4 detectors
+    # Run text-based detectors (from Whisper transcript)
     repetition_data = detect_repetitions(words)
-    pause_data = detect_pauses(audio_path)
     filler_data = detect_fillers(words)
     speech_rate_data = calculate_speech_rate(words, duration)
     
-    # Calculate composite fluency score
+    # Run audio-based detectors (from raw audio signal)
+    pause_data = detect_pauses(audio_path)
+    audio_rep_data = detect_audio_level_repetitions(audio_path)
+    
+    print(f"   📊 Text repetitions: {repetition_data['count']}")
+    print(f"   📊 Audio repetitions: {audio_rep_data['count']}")
+    print(f"   📊 Fragmentation: {audio_rep_data.get('fragmentation_ratio', 0):.0%}")
+    print(f"   📊 Pauses: {pause_data['count']}")
+    print(f"   📊 Fillers: {filler_data['count']}")
+    
+    # Merge repetition counts: use the HIGHER of text vs audio detection
+    total_repetition_count = max(repetition_data["count"], audio_rep_data["count"])
+    
+    # Calculate composite fluency score with ALL data
     fluency_score = calculate_fluency_score(
-        repetition_data, pause_data, filler_data, speech_rate_data
+        repetition_data, pause_data, filler_data, speech_rate_data, audio_rep_data
     )
     
     # Build the complete metrics object
-    # This structure matches the Session model in MongoDB
     metrics = {
         "fluencyScore": fluency_score,
         "speechRateWPM": speech_rate_data["wpm"],
         "speechRateAssessment": speech_rate_data["assessment"],
-        "repetitionCount": repetition_data["count"],
+        "repetitionCount": total_repetition_count,
         "pauseCount": pause_data["count"],
         "fillerCount": filler_data["count"],
         "repetitions": [
@@ -390,23 +466,25 @@ def analyze_audio(audio_path, transcript_data):
             }
             for r in repetition_data["repetitions"]
         ],
+        "audioRepetitions": audio_rep_data.get("repetitions", []),
+        "fragmentationRatio": audio_rep_data.get("fragmentation_ratio", 0),
         "pauses": pause_data["pauses"],
         "fillers": filler_data["fillers"],
         "totalWords": speech_rate_data["total_words"],
         "durationSeconds": duration,
         "detectedStutters": _build_stutter_timeline(
-            repetition_data, pause_data, filler_data
+            repetition_data, pause_data, filler_data, audio_rep_data
         )
     }
     
     return metrics
 
 
-def _build_stutter_timeline(repetition_data, pause_data, filler_data):
+def _build_stutter_timeline(repetition_data, pause_data, filler_data, audio_rep_data=None):
     """
     Build a unified timeline of all detected stuttering events,
-    sorted by position in the audio. This is useful for highlighting
-    stuttered moments in the UI.
+    sorted by position in the audio.
+    Now includes audio-level detections.
     """
     timeline = []
     
@@ -417,6 +495,16 @@ def _build_stutter_timeline(repetition_data, pause_data, filler_data):
             "position": r["position"],
             "details": f"Repeated {r['times']} times"
         })
+    
+    # Audio-level repetitions (catches what Whisper misses)
+    if audio_rep_data:
+        for ar in audio_rep_data.get("repetitions", []):
+            timeline.append({
+                "type": "repetition",
+                "word": f"[{ar['type']}]",
+                "position": ar["position"],
+                "details": ar["details"]
+            })
     
     for p in pause_data["pauses"]:
         timeline.append({

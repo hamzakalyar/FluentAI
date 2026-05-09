@@ -11,6 +11,8 @@ dotenv.config();
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
+const sessionRoutes = require('./routes/session.routes');
+const practiceRoutes = require('./routes/practice.routes');
 
 const app = express();
 
@@ -20,7 +22,11 @@ connectDB();
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: [
+    'http://localhost:5173',   // React/Vite frontend
+    'http://localhost:3000',   // Test frontend (npx serve)
+    process.env.CLIENT_URL
+  ].filter(Boolean),
   credentials: true
 }));
 app.use(morgan('dev'));
@@ -32,6 +38,8 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/sessions', sessionRoutes);
+app.use('/api/practice', practiceRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
