@@ -12,6 +12,7 @@ dotenv.config();
 // Import routes
 const authRoutes = require('./routes/auth.routes');
 const sessionRoutes = require('./routes/session.routes');
+const { assessmentRouter } = require('./routes/session.routes');
 const practiceRoutes = require('./routes/practice.routes');
 
 const app = express();
@@ -39,6 +40,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionRoutes);
+app.use('/api/assessment-passages', assessmentRouter);
 app.use('/api/practice', practiceRoutes);
 
 // Health check endpoint

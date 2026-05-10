@@ -29,6 +29,7 @@ from stutter_detector import analyze_audio
 from nlp_analyzer import analyze_transcript
 from phoneme_mapper import identify_weak_sounds
 from practice_generator import get_exercises, get_all_available_sounds
+from assessment_passages import get_all_passages, get_passage_by_id, compare_expected_vs_actual
 
 app = Flask(__name__)
 CORS(app)
@@ -90,10 +91,16 @@ def analyze():
         if audio_file.filename == '':
             return jsonify({'error': 'Empty filename'}), 400
 
+        # Check for assessment mode (passageId sent with the audio)
+        passage_id = request.form.get('passageId', None)
+        expected_text = request.form.get('expectedText', None)
+
         # Save the uploaded file temporarily
         filepath = os.path.join(UPLOAD_FOLDER, audio_file.filename)
         audio_file.save(filepath)
         print(f"\n📂 Received audio file: {audio_file.filename}")
+        if passage_id:
+            print(f"📋 Assessment mode: passage '{passage_id}'")
 
         # ============================================
         # STEP 1: WHISPER TRANSCRIPTION
@@ -148,6 +155,35 @@ def analyze():
             'top3WeakSounds': weak_sounds_data['top3'],
             'duration': transcript_data['duration']
         }
+
+        # ============================================
+        # STEP 5: ASSESSMENT COMPARISON (if passage was specified)
+        # ============================================
+        if passage_id:
+            print("📋 Step 5: Comparing expected vs actual text...")
+            comparison = compare_expected_vs_actual(passage_id, transcript_data['words'])
+            result['assessmentComparison'] = comparison
+            print(f"   Accuracy: {comparison.get('accuracy', 0)}%")
+            print(f"   Skipped words: {len(comparison.get('skippedWords', []))}")
+            print(f"   Weakest sounds: {[s['sound'] for s in comparison.get('weakestSounds', [])]}")
+            
+            # Use assessment weak sounds if detected (more accurate than free analysis)
+            if comparison.get('weakestSounds'):
+                assessment_weak = [s['sound'] for s in comparison['weakestSounds']]
+                result['top3WeakSounds'] = assessment_weak[:3]
+        elif expected_text:
+            print("📋 Step 5: Comparing with provided expected text...")
+            # Custom expected text (not from a passage)
+            import re
+            expected_words = [w.lower() for w in re.findall(r"[a-zA-Z']+", expected_text)]
+            actual_words = [w['word'].lower().strip(".,!?;:'\"") for w in transcript_data['words']]
+            matched = sum(1 for w in expected_words if w in actual_words)
+            result['expectedTextComparison'] = {
+                'expectedWordCount': len(expected_words),
+                'actualWordCount': len(actual_words),
+                'matchedWords': matched,
+                'accuracy': round((matched / len(expected_words)) * 100, 1) if expected_words else 100
+            }
 
         print(f"\n✅ Analysis complete! Fluency Score: {metrics['fluencyScore']}/100")
 
@@ -237,13 +273,37 @@ def available_sounds():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/assessment-passages', methods=['GET'])
+def list_passages():
+    """List all available assessment passages (metadata only)."""
+    try:
+        passages = get_all_passages()
+        return jsonify({'passages': passages})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/assessment-passages/<passage_id>', methods=['GET'])
+def get_passage(passage_id):
+    """Get a specific passage with full text and sound map."""
+    try:
+        passage = get_passage_by_id(passage_id)
+        if not passage:
+            return jsonify({'error': 'Passage not found'}), 404
+        return jsonify({'passage': passage})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     print('\n🎤 Audio Analysis Service')
     print('=' * 40)
     print('📍 Endpoints:')
-    print('   GET  /health             → Health check')
-    print('   POST /analyze            → Full audio analysis')
-    print('   POST /generate-exercises → Practice exercises')
-    print('   GET  /available-sounds   → List available sounds')
+    print('   GET  /health               → Health check')
+    print('   POST /analyze              → Full audio analysis')
+    print('   POST /generate-exercises   → Practice exercises')
+    print('   GET  /available-sounds     → List available sounds')
+    print('   GET  /assessment-passages  → List assessment passages')
+    print('   GET  /assessment-passages/:id → Get passage details')
     print('=' * 40)
     app.run(debug=True, port=5000)

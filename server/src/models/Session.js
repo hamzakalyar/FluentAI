@@ -75,7 +75,13 @@ const sessionSchema = new mongoose.Schema({
   weakSoundsDetected: [{
     sound: String,
     frequency: Number
-  }]
+  }],
+  // Assessment mode fields
+  passageId: { type: String, default: null },
+  assessmentComparison: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
+  }
 }, {
   timestamps: true
 });

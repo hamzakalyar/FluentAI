@@ -80,6 +80,15 @@ router.post('/analyze', auth, upload.single('audio'), async (req, res) => {
       contentType: req.file.mimetype
     });
 
+    // Forward passageId and expectedText if provided (assessment mode)
+    if (req.body?.passageId) {
+      formData.append('passageId', req.body.passageId);
+      console.log(`📋 Assessment mode: passage '${req.body.passageId}'`);
+    }
+    if (req.body?.expectedText) {
+      formData.append('expectedText', req.body.expectedText);
+    }
+
     const pythonResponse = await axios.post(
       `${PYTHON_SERVICE_URL}/analyze`,
       formData,
@@ -123,6 +132,14 @@ router.post('/analyze', auth, upload.single('audio'), async (req, res) => {
       sentimentPolarity: analysis.nlpAnalysis?.sentimentPolarity || 0
     };
     session.weakSoundsDetected = analysis.weakSoundsDetected || [];
+
+    // Save assessment comparison if present
+    if (analysis.assessmentComparison) {
+      session.assessmentComparison = analysis.assessmentComparison;
+    }
+    if (req.body?.passageId) {
+      session.passageId = req.body.passageId;
+    }
 
     await session.save();
     console.log(`💾 Session ${session._id} saved to MongoDB`);
@@ -388,3 +405,38 @@ router.delete('/:id', auth, async (req, res) => {
 
 
 module.exports = router;
+
+
+/**
+ * ASSESSMENT PASSAGE PROXY ROUTES
+ * Forward requests to the Python audio-service
+ */
+const assessmentRouter = express.Router();
+
+// GET /api/assessment-passages — List all passages
+assessmentRouter.get('/', async (req, res) => {
+  try {
+    const response = await axios.get(`${PYTHON_SERVICE_URL}/assessment-passages`, { timeout: 10000 });
+    res.json(response.data);
+  } catch (error) {
+    if (error.code === 'ECONNREFUSED') {
+      return res.status(503).json({ message: 'Python service not available' });
+    }
+    res.status(500).json({ message: 'Failed to fetch passages', error: error.message });
+  }
+});
+
+// GET /api/assessment-passages/:id — Get specific passage
+assessmentRouter.get('/:id', async (req, res) => {
+  try {
+    const response = await axios.get(`${PYTHON_SERVICE_URL}/assessment-passages/${req.params.id}`, { timeout: 10000 });
+    res.json(response.data);
+  } catch (error) {
+    if (error.response?.status === 404) {
+      return res.status(404).json({ message: 'Passage not found' });
+    }
+    res.status(500).json({ message: 'Failed to fetch passage', error: error.message });
+  }
+});
+
+module.exports.assessmentRouter = assessmentRouter;

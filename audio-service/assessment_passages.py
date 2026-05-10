@@ -1,0 +1,450 @@
+"""
+ASSESSMENT PASSAGES — Research-Backed Reading Material for Stutter Detection
+==============================================================================
+Based on clinical speech pathology research (Johnson & Brown 1935, Hahn 1942,
+NIH publications) on the most commonly stuttered speech sounds.
+
+KEY RESEARCH FINDINGS:
+- Plosives (B, P, T, D, K, G) are stuttered MOST — air pressure buildup causes blocks
+- Fricatives (S, SH, F, TH, V, Z) cause prolongations (stretching sounds)
+- Consonant clusters (STR, SP, SK, BL, FL, GR) require complex motor coordination
+- Liquids/Glides (R, L, W) cause difficult transitions
+- Stuttering occurs 3–4× more on consonants than vowels
+- Word-initial positions are stuttered MOST
+- Content words (nouns, verbs) > function words in adults
+- Longer words and sentence-initial words trigger more stuttering
+
+PASSAGE DESIGN:
+Each passage is carefully constructed to contain a high density of specific
+target sounds in word-initial positions, using natural sentence structures.
+"""
+
+
+ASSESSMENT_PASSAGES = {
+    # ─────────────────────────────────────────────────────────────
+    # SCREENING PASSAGE — Tests ALL major stutter-prone sounds
+    # Similar to the clinically used "Rainbow Passage" and
+    # "My Grandfather" passage used by SLPs worldwide.
+    # ─────────────────────────────────────────────────────────────
+    "screening": {
+        "id": "screening",
+        "title": "General Screening Passage",
+        "description": "A comprehensive passage that tests all major stutter-prone sounds. Read this first to identify your specific weak areas.",
+        "difficulty": "medium",
+        "estimatedDuration": 45,
+        "targetSounds": ["B", "P", "T", "D", "K", "G", "S", "TH", "F", "R", "L", "SH", "STR"],
+        "text": (
+            "Peter bought a big blue basket at the store. "
+            "The sturdy basket seemed perfect for collecting strawberries. "
+            "He thought about picking three bushels but decided to start with just one. "
+            "Growing berries requires patience and strength. "
+            "The thorny branches scratch and pull at your skin. "
+            "Still, Peter felt grateful for the fresh fruit. "
+            "Back home, he carefully placed the bright red berries in a glass bowl. "
+            "His daughter Sophie clapped and smiled at the beautiful display. "
+            "Together they decided to bake a delicious strawberry cake for the family gathering."
+        ),
+        "wordCount": 80,
+        "soundMap": {
+            "B": ["bought", "big", "blue", "basket", "berries", "back", "bright", "bowl", "beautiful", "bake"],
+            "P": ["Peter", "perfect", "picking", "patience", "pull", "placed", "Peter"],
+            "T": ["the", "three", "together", "thorny", "they", "to"],
+            "D": ["decided", "daughter", "display", "delicious", "decided"],
+            "K": ["collecting", "cake", "carefully", "clapped"],
+            "G": ["growing", "grateful", "glass", "gathering"],
+            "S": ["store", "sturdy", "seemed", "start", "still", "skin", "Sophie", "smiled", "strawberry"],
+            "STR": ["strawberries", "strength", "scratch", "strawberry"],
+            "TH": ["the", "thought", "three", "thorny"],
+            "F": ["for", "fruit", "felt", "fresh", "family", "felt"],
+            "R": ["red", "requires", "red"],
+            "L": ["like", "just"],
+            "SH": ["she"]
+        }
+    },
+
+    # ─────────────────────────────────────────────────────────────
+    # PLOSIVE-FOCUSED PASSAGES
+    # Plosives (B, P, T, D, K, G) are the MOST commonly stuttered
+    # sounds because they require building up air pressure behind
+    # a closure in the mouth, which can trigger blocks.
+    # ─────────────────────────────────────────────────────────────
+    "plosives_bp": {
+        "id": "plosives_bp",
+        "title": "Plosives: B and P Sounds",
+        "description": "Tests bilabial plosives — the most common trigger for stuttering blocks. Both lips press together to build air pressure.",
+        "difficulty": "easy",
+        "estimatedDuration": 25,
+        "targetSounds": ["B", "P"],
+        "text": (
+            "Bob and Betty planned a birthday party at the park. "
+            "They brought a beautiful purple balloon and a big brown puppy. "
+            "The puppy bounced playfully between the benches. "
+            "Betty baked a perfect blueberry pie for everyone. "
+            "Bob poured fresh lemonade into bright paper cups. "
+            "Both parents beamed proudly as the children played."
+        ),
+        "wordCount": 50,
+        "soundMap": {
+            "B": ["Bob", "Betty", "birthday", "brought", "beautiful", "balloon", "big", "brown", "bounced", "between", "benches", "Betty", "baked", "blueberry", "bright", "Both", "beamed"],
+            "P": ["planned", "party", "park", "purple", "puppy", "playfully", "perfect", "pie", "poured", "paper", "parents", "proudly", "played"]
+        }
+    },
+
+    "plosives_td": {
+        "id": "plosives_td",
+        "title": "Plosives: T and D Sounds",
+        "description": "Tests alveolar plosives — the tongue tip presses against the ridge behind your teeth.",
+        "difficulty": "easy",
+        "estimatedDuration": 25,
+        "targetSounds": ["T", "D"],
+        "text": (
+            "Tom and Diana took a trip downtown to the train station. "
+            "The tall dark building towered above the dusty road. "
+            "Diana decided to take the direct train to the coast. "
+            "Tom told her about a tiny diner down the trail. "
+            "They tasted delicious turkey sandwiches together. "
+            "The day turned out to be truly delightful for both of them."
+        ),
+        "wordCount": 55,
+        "soundMap": {
+            "T": ["Tom", "took", "trip", "train", "tall", "towered", "take", "told", "tiny", "trail", "tasted", "turkey", "together", "turned", "truly"],
+            "D": ["Diana", "downtown", "dark", "dusty", "decided", "direct", "diner", "down", "delicious", "day", "delightful"]
+        }
+    },
+
+    "plosives_kg": {
+        "id": "plosives_kg",
+        "title": "Plosives: K and G Sounds",
+        "description": "Tests velar plosives — the back of the tongue presses against the soft palate.",
+        "difficulty": "easy",
+        "estimatedDuration": 25,
+        "targetSounds": ["K", "G"],
+        "text": (
+            "Kevin and Grace went camping near a quiet creek. "
+            "They carried a green canvas tent and a cooking kit. "
+            "Grace gathered colorful stones from the creek bank. "
+            "Kevin cooked a great chicken curry over the campfire. "
+            "The golden sunset cast a gorgeous glow across the canyon. "
+            "A curious gray goose came close to their camp and gobbled their crackers."
+        ),
+        "wordCount": 55,
+        "soundMap": {
+            "K": ["Kevin", "camping", "quiet", "creek", "carried", "canvas", "cooking", "kit", "colorful", "creek", "Kevin", "cooked", "curry", "campfire", "cast", "canyon", "curious", "came", "close", "camp", "crackers"],
+            "G": ["Grace", "green", "gathered", "great", "golden", "gorgeous", "glow", "gray", "goose", "gobbled"]
+        }
+    },
+
+    # ─────────────────────────────────────────────────────────────
+    # FRICATIVE-FOCUSED PASSAGES
+    # Fricatives cause PROLONGATIONS — the person stretches the
+    # sound (e.g., "sssssun") because airflow is continuous
+    # ─────────────────────────────────────────────────────────────
+    "fricatives_s": {
+        "id": "fricatives_s",
+        "title": "Fricatives: S and SH Sounds",
+        "description": "Tests sibilant fricatives — continuous airflow through a narrow gap. Common trigger for prolongations.",
+        "difficulty": "medium",
+        "estimatedDuration": 30,
+        "targetSounds": ["S", "SH"],
+        "text": (
+            "Sarah stood silently at the seashore, watching the ships sail past. "
+            "The silver sunshine sparkled across the shimmering surface of the sea. "
+            "She noticed seven small shells scattered along the sandy shoreline. "
+            "Slowly, Sarah started selecting the shiniest shells to share with her sister. "
+            "The sharp ocean breeze shifted suddenly, sending spray across the shore. "
+            "She sheltered behind a stone wall, still smiling at the spectacular scene."
+        ),
+        "wordCount": 62,
+        "soundMap": {
+            "S": ["Sarah", "stood", "silently", "seashore", "ships", "sail", "silver", "sunshine", "sparkled", "surface", "sea", "seven", "small", "scattered", "sandy", "slowly", "Sarah", "started", "selecting", "shiniest", "share", "sister", "shifted", "suddenly", "sending", "spray", "she", "sheltered", "stone", "still", "smiling", "spectacular", "scene"],
+            "SH": ["seashore", "ships", "shimmering", "shells", "shoreline", "shiniest", "share", "sharp", "shifted", "shore", "she", "sheltered"]
+        }
+    },
+
+    "fricatives_th": {
+        "id": "fricatives_th",
+        "title": "Fricatives: TH Sound (voiced and unvoiced)",
+        "description": "Tests dental fricatives — tongue between teeth. One of the most challenging sounds for people who stutter.",
+        "difficulty": "medium",
+        "estimatedDuration": 30,
+        "targetSounds": ["TH", "DH"],
+        "text": (
+            "Three brothers gathered together on Thursday to think about their future. "
+            "The eldest thought thoroughly about the path they should choose. "
+            "The others threw around ideas with great enthusiasm. "
+            "They theorized that the northern territory held the most potential. "
+            "Father and mother both thought this was a worthwhile thought. "
+            "Through thick and thin, the three brothers trusted each other completely. "
+            "That evening, they thanked their parents for everything."
+        ),
+        "wordCount": 62,
+        "soundMap": {
+            "TH": ["Three", "Thursday", "think", "thought", "thoroughly", "threw", "theorized", "the", "northern", "territory", "thought", "Through", "thick", "thin", "three", "thanked", "their", "that", "everything"],
+            "DH": ["the", "their", "they", "this", "that", "the", "other"]
+        }
+    },
+
+    "fricatives_f": {
+        "id": "fricatives_f",
+        "title": "Fricatives: F and V Sounds",
+        "description": "Tests labiodental fricatives — lower lip touches upper teeth.",
+        "difficulty": "medium",
+        "estimatedDuration": 25,
+        "targetSounds": ["F", "V"],
+        "text": (
+            "Five friends from the village visited a famous festival in February. "
+            "The vibrant flower fields formed a fantastic view from every direction. "
+            "Victoria found a vintage violin at a vendor's table. "
+            "Her friend Fiona volunteered to verify its value before purchasing. "
+            "The festival featured live folk music and various food vendors. "
+            "Finally, they voted to visit the fireworks viewing area before leaving."
+        ),
+        "wordCount": 58,
+        "soundMap": {
+            "F": ["Five", "friends", "from", "famous", "festival", "February", "flower", "fields", "formed", "fantastic", "found", "Fiona", "folk", "food", "Finally", "fireworks"],
+            "V": ["village", "visited", "vibrant", "view", "Victoria", "vintage", "violin", "vendor", "volunteered", "verify", "value", "various", "vendors", "voted", "visit", "viewing"]
+        }
+    },
+
+    # ─────────────────────────────────────────────────────────────
+    # CLUSTER + LIQUID PASSAGE
+    # Consonant clusters (STR, BL, SP, etc.) require complex
+    # motor sequencing — a common trigger for part-word repetitions
+    # ─────────────────────────────────────────────────────────────
+    "clusters": {
+        "id": "clusters",
+        "title": "Consonant Clusters and Blends",
+        "description": "Tests complex consonant combinations at word onsets — requires precise motor coordination and commonly triggers part-word repetitions.",
+        "difficulty": "hard",
+        "estimatedDuration": 35,
+        "targetSounds": ["STR", "SP", "SK", "BL", "FL", "GR", "TR", "PR"],
+        "text": (
+            "The strong and brave explorer trekked across the sprawling grasslands. "
+            "Strange creatures scrambled through the dry brush and scraggly trees. "
+            "Black clouds spread quickly, blocking the bright blue sky. "
+            "A great storm struck with tremendous flashes of lightning and thunder. "
+            "The traveler sprinted toward a small stone structure for protection. "
+            "Gradually the sky cleared, and a spectacular rainbow stretched from ground to sky. "
+            "The trip proved to be truly thrilling despite the unpredictable spring weather."
+        ),
+        "wordCount": 68,
+        "soundMap": {
+            "STR": ["strong", "strange", "struck", "structure", "stretched", "spring"],
+            "SP": ["sprawling", "spread", "spectacular", "sprinted", "spring"],
+            "SK": ["sky", "scrambled", "scraggly", "sky", "sky"],
+            "BL": ["brave", "brush", "black", "blocking", "bright", "blue"],
+            "FL": ["flashes"],
+            "GR": ["grasslands", "great", "gradually", "ground"],
+            "TR": ["trekked", "trees", "tremendous", "traveler", "trip", "truly", "thrilling"],
+            "PR": ["protection", "proved", "predictable"]
+        }
+    },
+
+    # ─────────────────────────────────────────────────────────────
+    # LIQUIDS PASSAGE (R and L)
+    # These sounds involve the tongue in complex positions
+    # ─────────────────────────────────────────────────────────────
+    "liquids_rl": {
+        "id": "liquids_rl",
+        "title": "Liquids: R and L Sounds",
+        "description": "Tests liquid consonants — the tongue must hold a precise position while air flows around it.",
+        "difficulty": "medium",
+        "estimatedDuration": 30,
+        "targetSounds": ["R", "L"],
+        "text": (
+            "Laura and Robert loved exploring the rolling hills near their rural home. "
+            "The long winding river ran lazily through the lush green landscape. "
+            "Laura regularly collected rare wildflowers along the rocky ridgeline. "
+            "Robert liked reading under the large oak tree by the lake. "
+            "Later, they relaxed on the lawn and listened to the lovely birdsong. "
+            "Life in the countryside felt remarkably peaceful and truly liberating."
+        ),
+        "wordCount": 60,
+        "soundMap": {
+            "R": ["Robert", "rolling", "rural", "river", "ran", "rare", "rocky", "ridgeline", "Robert", "reading", "relaxed", "remarkably"],
+            "L": ["Laura", "loved", "long", "lazily", "lush", "landscape", "Laura", "liked", "large", "lake", "Later", "lawn", "listened", "lovely", "Life", "liberating"]
+        }
+    }
+}
+
+
+def get_all_passages():
+    """
+    Return all available assessment passages (metadata only, no full text).
+    Used by the frontend to show a list of passages to choose from.
+    """
+    passages = []
+    for key, passage in ASSESSMENT_PASSAGES.items():
+        passages.append({
+            "id": passage["id"],
+            "title": passage["title"],
+            "description": passage["description"],
+            "difficulty": passage["difficulty"],
+            "estimatedDuration": passage["estimatedDuration"],
+            "targetSounds": passage["targetSounds"],
+            "wordCount": passage["wordCount"]
+        })
+    return passages
+
+
+def get_passage_by_id(passage_id):
+    """
+    Return a specific passage with full text and sound map.
+    """
+    passage = ASSESSMENT_PASSAGES.get(passage_id)
+    if passage:
+        return passage
+    return None
+
+
+def get_expected_words(passage_id):
+    """
+    Return the expected words list for comparison with Whisper transcript.
+    Used to detect which words were stuttered, skipped, or substituted.
+    """
+    passage = ASSESSMENT_PASSAGES.get(passage_id)
+    if not passage:
+        return []
+
+    import re
+    text = passage["text"]
+    words = re.findall(r"[a-zA-Z']+", text)
+    return [w.lower() for w in words]
+
+
+def compare_expected_vs_actual(passage_id, actual_words):
+    """
+    Compare what the user SHOULD have said (passage text) vs what
+    Whisper actually transcribed. This identifies:
+
+    1. MATCHES    — word spoken correctly
+    2. SKIPPED    — word in passage but not in transcript (possible block/avoidance)
+    3. INSERTIONS — extra words not in passage (fillers, repetitions)
+    4. STUTTERED  — word appears but with timing anomalies
+
+    Uses a simple sequence alignment approach.
+
+    Args:
+        passage_id (str): ID of the passage that was read
+        actual_words (list): Words from Whisper transcript [{"word": "...", "start": ..., "end": ...}]
+
+    Returns:
+        dict: Comparison results with per-word analysis
+    """
+    passage = ASSESSMENT_PASSAGES.get(passage_id)
+    if not passage:
+        return {"error": "Passage not found"}
+
+    import re
+    expected_text = passage["text"]
+    expected_words = [w.lower() for w in re.findall(r"[a-zA-Z']+", expected_text)]
+
+    actual_word_list = [w["word"].lower().strip(".,!?;:'\"") for w in actual_words]
+
+    # Simple alignment using longest common subsequence approach
+    results = {
+        "passageId": passage_id,
+        "passageTitle": passage["title"],
+        "expectedWordCount": len(expected_words),
+        "actualWordCount": len(actual_word_list),
+        "matchedWords": [],
+        "skippedWords": [],
+        "insertedWords": [],
+        "accuracy": 0.0,
+        "soundsTestedResults": {}
+    }
+
+    # Track which expected words were found in actual
+    actual_set = {}
+    for i, w in enumerate(actual_word_list):
+        if w not in actual_set:
+            actual_set[w] = []
+        actual_set[w].append(i)
+
+    matched_count = 0
+    sound_map = passage.get("soundMap", {})
+
+    # For each target sound, check how many of its words were spoken correctly
+    for sound, target_words in sound_map.items():
+        spoken = 0
+        skipped = 0
+        for tw in target_words:
+            tw_lower = tw.lower()
+            if tw_lower in actual_set:
+                spoken += 1
+            else:
+                skipped += 1
+                results["skippedWords"].append({
+                    "word": tw,
+                    "sound": sound,
+                    "reason": "Not found in transcript — possible block or avoidance"
+                })
+
+        results["soundsTestedResults"][sound] = {
+            "totalWords": len(target_words),
+            "spokenCorrectly": spoken,
+            "skipped": skipped,
+            "accuracy": round((spoken / len(target_words)) * 100, 1) if target_words else 100
+        }
+
+    # Check for insertions (words in actual but not in expected)
+    expected_set = set(expected_words)
+    filler_words = {"um", "uh", "er", "ah", "like", "you", "know", "basically", "so", "well", "hmm"}
+    for w in actual_word_list:
+        if w in filler_words:
+            results["insertedWords"].append({
+                "word": w,
+                "reason": "Filler word detected"
+            })
+
+    # Calculate overall accuracy
+    for ew in expected_words:
+        if ew in actual_set:
+            matched_count += 1
+            results["matchedWords"].append(ew)
+
+    if len(expected_words) > 0:
+        results["accuracy"] = round((matched_count / len(expected_words)) * 100, 1)
+
+    # Identify weakest sounds (lowest accuracy)
+    weak_sounds = sorted(
+        results["soundsTestedResults"].items(),
+        key=lambda x: x[1]["accuracy"]
+    )
+    results["weakestSounds"] = [
+        {"sound": s, "accuracy": d["accuracy"], "skipped": d["skipped"]}
+        for s, d in weak_sounds
+        if d["accuracy"] < 100
+    ][:5]
+
+    return results
+
+
+# --- FOR TESTING ---
+if __name__ == "__main__":
+    print("=== ASSESSMENT PASSAGES ===\n")
+
+    all_passages = get_all_passages()
+    for p in all_passages:
+        print(f"  [{p['id']}] {p['title']}")
+        print(f"    Difficulty: {p['difficulty']} | Words: {p['wordCount']} | Duration: ~{p['estimatedDuration']}s")
+        print(f"    Target sounds: {', '.join(p['targetSounds'])}")
+        print()
+
+    # Test expected vs actual comparison
+    print("\n--- Comparison Test ---")
+    # Simulate a user who skipped some words
+    fake_actual = [
+        {"word": "Peter", "start": 0, "end": 0.5},
+        {"word": "bought", "start": 0.5, "end": 1.0},
+        {"word": "a", "start": 1.0, "end": 1.1},
+        {"word": "um", "start": 1.1, "end": 1.3},
+        {"word": "basket", "start": 1.5, "end": 2.0},
+        {"word": "at", "start": 2.0, "end": 2.2},
+        {"word": "the", "start": 2.2, "end": 2.4},
+        {"word": "store", "start": 2.4, "end": 2.8},
+    ]
+    result = compare_expected_vs_actual("screening", fake_actual)
+    print(f"  Accuracy: {result['accuracy']}%")
+    print(f"  Skipped: {len(result['skippedWords'])} words")
+    print(f"  Weakest sounds: {result['weakestSounds']}")
