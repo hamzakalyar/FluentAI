@@ -1,0 +1,59 @@
+@import "./design-tokens.css";
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: white;
+    color: var(--color-slate-700);
+    font-family: var(--font-body);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--color-navy);
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+
+  h1 { font-size: clamp(24px, 3vw, 28px); }
+  h2 { font-size: clamp(20px, 2.5vw, 22px); }
+  
+  p {
+    margin-bottom: 1rem;
+  }
+
+  ::selection {
+    background-color: rgba(79, 70, 229, 0.1);
+    color: var(--color-primary);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply h-12 px-6 bg-primary text-white rounded-xl font-bold transition-all duration-200 hover:bg-primary-light active:scale-[0.98] flex items-center justify-center gap-2;
+  }
+  
+  .btn-ghost {
+    @apply h-12 px-6 border border-slate-200 text-slate-700 rounded-xl font-bold transition-all duration-200 hover:bg-slate-50 active:scale-[0.98] flex items-center justify-center gap-2;
+  }
+}
+
+@layer utilities {
+  .text-display {
+    font-size: clamp(36px, 4vw, 64px);
+    font-weight: 900;
+    line-height: 1.1;
+  }
+
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+}
