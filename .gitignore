@@ -39,6 +39,6 @@ npm-debug.log*
 *.sqlite3
 *.db
 
-# Frontend (Excluded per user request)
-client/
+# Frontend (Previously excluded)
+# client/
 test-frontend/
