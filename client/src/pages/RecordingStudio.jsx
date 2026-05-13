@@ -14,19 +14,22 @@ import { useNavigate } from 'react-router-dom';
 import { useRecording } from '../hooks/useRecording';
 import WaveformCanvas from '../components/features/Recording/WaveformCanvas';
 import { formatDuration } from '../utils/formatMetrics';
+import { sessionsService } from '../services/sessionsService';
 
 const RecordingStudio = () => {
    const navigate = useNavigate();
    const [showReRecordModal, setShowReRecordModal] = useState(false);
    const [currentStep, setCurrentStep] = useState(0);
-   const [activePassage, setActivePassage] = useState(1);
-   const [difficulty, setDifficulty] = useState('Medium');
+   const [passages, setPassages] = useState([]);
+   const [activePassageIndex, setActivePassageIndex] = useState(0);
+   const [isFreeRecord, setIsFreeRecord] = useState(false);
 
    const {
       status,
       duration,
       audioBlob,
       analyser,
+      analysisResults,
       startRecording,
       stopRecording,
       pauseRecording,
@@ -92,38 +95,35 @@ const RecordingStudio = () => {
       { label: 'READY', status: 'idle' },
       { label: 'RECORDING', status: ['recording', 'paused'] },
       { label: 'REVIEW', status: 'reviewing' },
-      { label: 'ANALYSIS', status: 'processing' }
+      { label: 'ANALYSIS', status: 'processing' },
+      { label: 'SUCCESS', status: 'success' }
    ];
 
    const getActiveStep = () => {
-      if (status === 'idle' || status === 'permissions') return 0;
       if (status === 'recording' || status === 'paused') return 1;
       if (status === 'reviewing') return 2;
       if (status === 'processing') return 3;
+      if (status === 'success') return 4;
       return 0;
    };
 
    const activeStep = getActiveStep();
 
-   const allPassages = {
-      Easy: {
-         1: "The cat sat on the mat. The sun is hot today. I like to read books. Let's go for a walk in the park.",
-         2: "The sky is blue. The birds sing in the trees. We can play with a ball. It is time to eat lunch.",
-         3: "A small dog ran fast. He was very happy. The green grass is soft. I saw a red apple on the table."
-      },
-      Medium: {
-         1: "The sun sets slowly over the horizon, painting the sky in shades of amber and violet. It is a peaceful end to a long day.",
-         2: "The rapid development of artificial intelligence is transforming how we interact with technology in our daily lives.",
-         3: "In a quiet corner of the library, the old clock chimed softly. Books of ancient lore lined the shelves, telling stories of old."
-      },
-      Hard: {
-         1: "Philosophical inquiries into the nature of consciousness often encounter the 'hard problem', necessitating a multidisciplinary approach.",
-         2: "Macroeconomic fluctuations in emerging markets are frequently exacerbated by geopolitical instability and the subsequent volatility.",
-         3: "The structural integrity of the architectural marvel was compromised by unprecedented seismic activity, requiring immediate fortification."
-      }
-   };
+   useEffect(() => {
+      const fetchPassages = async () => {
+         try {
+            const res = await sessionsService.getPassages();
+            // res.data is { passages: [...] }
+            setPassages(res.data?.passages || res.data || []);
+         } catch (e) {
+            console.error("Failed to fetch passages", e);
+         }
+      };
+      fetchPassages();
+   }, []);
 
-   const currentPassageText = allPassages[difficulty][activePassage];
+   const activePassage = (Array.isArray(passages) ? passages[activePassageIndex] : null) || {};
+   const currentPassageText = isFreeRecord ? "Free Record Mode: Read anything or speak freely. No text will be evaluated." : activePassage.description || "Loading passages...";
 
    // ── Processing Step Simulation ──
    useEffect(() => {
@@ -170,9 +170,8 @@ const RecordingStudio = () => {
             </div>
 
             <div className="flex bg-[var(--bg-elevated)] p-1 rounded-xl border border-[var(--border-subtle)] shadow-sm">
-               {['Easy', 'Medium', 'Hard'].map((lvl) => (
-                  <button key={lvl} onClick={() => setDifficulty(lvl)} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${difficulty === lvl ? 'bg-[var(--accent)] text-white shadow-md' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>{lvl}</button>
-               ))}
+               <button onClick={() => setIsFreeRecord(false)} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${!isFreeRecord ? 'bg-[var(--accent)] text-white shadow-md' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>Daily Routine</button>
+               <button onClick={() => setIsFreeRecord(true)} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${isFreeRecord ? 'bg-[var(--accent)] text-white shadow-md' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>Free Record</button>
             </div>
          </div>
 
@@ -207,7 +206,10 @@ const RecordingStudio = () => {
                   </div>
                   <div className="w-full h-2 bg-[var(--bg-base)] rounded-full overflow-hidden">
                      <div className="h-full bg-[var(--accent)] rounded-full" style={{ width: '57%' }} />
-                       <div className="bg-[var(--bg-surface)] rounded-2xl p-4 border border-[var(--border-subtle)] shadow-sm text-center flex-1 flex flex-col items-center justify-center max-h-[120px]">
+                  </div>
+               </div>
+
+               <div className="bg-[var(--bg-surface)] rounded-2xl p-4 border border-[var(--border-subtle)] shadow-sm text-center flex-1 flex flex-col items-center justify-center max-h-[120px]">
                   <h3 className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-2">Weekly Ring</h3>
                   <div className="relative inline-flex flex-col items-center">
                      <svg className="w-16 h-16 -rotate-90">
@@ -217,9 +219,7 @@ const RecordingStudio = () => {
                      <span className="absolute top-[22px] text-[18px] font-black text-[var(--text-primary)] tracking-tighter">4/7</span>
                   </div>
                </div>
-           </div>
                </div>
-            </div>
 
             {/* CENTER PANEL */}
             <div className="flex flex-col gap-5 min-h-0 h-full">
@@ -230,9 +230,11 @@ const RecordingStudio = () => {
                         <FileText size={18} className="text-[var(--accent)]" />
                         <span className="text-[12px] font-black uppercase tracking-widest">Practice Passage</span>
                      </div>
-                     <div className="flex gap-6">
-                        {[1, 2, 3].map(n => (
-                           <button key={n} onClick={() => setActivePassage(n)} className={`text-[12px] font-black uppercase tracking-widest pb-1 transition-all ${activeStep === 0 ? 'hover:text-[var(--text-secondary)]' : ''} ${activePassage === n ? 'text-[var(--accent)] border-b-2 border-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--text-muted)]'}`}>P{n}</button>
+                     <div className="flex gap-2 items-center overflow-x-auto">
+                        {!isFreeRecord && passages.map((p, idx) => (
+                           <button key={p.id} onClick={() => setActivePassageIndex(idx)} className={`text-[11px] font-black uppercase tracking-widest pb-1 transition-all whitespace-nowrap ${activeStep === 0 ? 'hover:text-[var(--text-secondary)]' : ''} ${activePassageIndex === idx ? 'text-[var(--accent)] border-b-2 border-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--text-muted)]'}`}>
+                              {p.title || `P${idx + 1}`}
+                           </button>
                         ))}
                      </div>
                   </div>
@@ -282,9 +284,13 @@ const RecordingStudio = () => {
                         <div className="w-full h-16 mb-6 bg-[var(--bg-base)] rounded-xl flex items-center justify-center border border-[var(--border-subtle)]">
                            <WaveformCanvas analyser={analyser} isRecording={status === 'recording'} color="var(--accent)" bars={50} />
                         </div>
-                        <div className="flex justify-center gap-6">
-                           <button onClick={status === 'recording' ? pauseRecording : resumeRecording} className="w-10 h-10 rounded-full border border-amber-400 text-amber-500 flex items-center justify-center hover:bg-amber-400/10 transition-all">{status === 'recording' ? <Pause size={18} /> : <Play size={18} fill="currentColor" />}</button>
-                           <button onClick={stopRecording} className="w-10 h-10 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500/20 transition-all shadow-sm"><Square size={18} fill="currentColor" /></button>
+                        <div className="flex justify-center gap-4 w-full px-8">
+                           <button onClick={status === 'recording' ? pauseRecording : resumeRecording} className="flex-1 max-w-[140px] h-12 rounded-2xl border-2 border-amber-400 text-amber-600 flex items-center justify-center gap-2 hover:bg-amber-400/10 transition-all font-bold text-[13px] tracking-wide">
+                              {status === 'recording' ? <><Pause size={18} /> PAUSE</> : <><Play size={18} fill="currentColor" /> RESUME</>}
+                           </button>
+                           <button onClick={stopRecording} className="flex-1 max-w-[140px] h-12 rounded-2xl bg-red-500 text-white flex items-center justify-center gap-2 hover:bg-red-600 transition-all shadow-md font-bold text-[13px] tracking-wide">
+                              <Square size={16} fill="currentColor" /> FINISH
+                           </button>
                         </div>
                      </div>
                   )}
@@ -304,7 +310,7 @@ const RecordingStudio = () => {
                            </div>
                         </div>
                         <div className="flex flex-col gap-2 w-full max-w-xs">
-                           <button onClick={startAnalysis} className="h-10 bg-[var(--accent)] text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center gap-2 justify-center shadow-lg">Start Analysis <ArrowRight size={16} /></button>
+                           <button onClick={() => startAnalysis(isFreeRecord ? undefined : activePassage.id)} className="h-10 bg-[var(--accent)] text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center gap-2 justify-center shadow-lg">Start Analysis <ArrowRight size={16} /></button>
                            <button onClick={() => setShowReRecordModal(true)} className="h-9 border border-red-500/20 text-red-500 rounded-xl font-bold text-[10px] hover:bg-red-500/10 transition-all uppercase tracking-widest flex items-center justify-center gap-2">
                               <RotateCcw size={14} /> Re-record
                            </button>
@@ -315,10 +321,92 @@ const RecordingStudio = () => {
                   {status === 'processing' && (
                      <div className="flex-1 flex flex-col items-center justify-center animate-fade-in py-2">
                         <Loader2 size={32} className="text-[var(--accent)] animate-spin mb-4" />
-                        <h3 className="text-[11px] font-bold text-[var(--text-primary)] mb-4 uppercase tracking-[0.2em]">{currentStep === 4 ? 'Complete!' : 'Processing...'}</h3>
-                        {currentStep === 4 && (
-                           <button onClick={() => navigate('/analytics')} className="mt-2 h-10 bg-[var(--accent)] text-white px-6 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center gap-2 shadow-lg">View Results <ArrowRight size={16} /></button>
+                        <h3 className="text-[11px] font-bold text-[var(--text-primary)] mb-4 uppercase tracking-[0.2em]">Processing Audio...</h3>
+                     </div>
+                  )}
+
+                  {status === 'success' && analysisResults && (
+                     <div className="flex-1 flex flex-col animate-fade-in py-2 overflow-y-auto custom-scrollbar pr-2 h-full w-full">
+                        <div className="flex items-center gap-4 mb-5">
+                           <div className="w-14 h-14 rounded-full bg-teal-50 border-2 border-teal-100 flex items-center justify-center shrink-0">
+                              <span className="text-xl font-black text-teal-600">{analysisResults.metrics?.fluencyScore || 0}%</span>
+                           </div>
+                           <div>
+                              <h3 className="text-[14px] font-bold text-[var(--text-primary)] uppercase tracking-[0.1em]">Analysis Complete</h3>
+                              <p className="text-[11px] font-medium text-[var(--text-muted)]">Detailed fluency report generated.</p>
+                           </div>
+                        </div>
+
+                        {/* Core Metrics */}
+                        <div className="grid grid-cols-3 gap-3 mb-5 shrink-0">
+                           <div className="bg-[var(--bg-base)] p-3 rounded-xl border border-[var(--border-subtle)]">
+                              <div className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1">WPM</div>
+                              <div className="text-lg font-black text-[var(--text-primary)]">{analysisResults.metrics?.wordsPerMinute || 0}</div>
+                           </div>
+                           <div className="bg-[var(--bg-base)] p-3 rounded-xl border border-[var(--border-subtle)]">
+                              <div className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1">Pauses</div>
+                              <div className="text-lg font-black text-amber-500">{analysisResults.metrics?.pauses || 0}</div>
+                           </div>
+                           <div className="bg-[var(--bg-base)] p-3 rounded-xl border border-[var(--border-subtle)]">
+                              <div className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1">Repeats</div>
+                              <div className="text-lg font-black text-red-500">{analysisResults.metrics?.repetitions || 0}</div>
+                           </div>
+                        </div>
+
+                        {/* Transcript Analysis */}
+                        <div className="mb-5 shrink-0">
+                           <h4 className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-2">Transcript Analysis</h4>
+                           <div className="bg-[var(--bg-base)] p-4 rounded-xl border border-[var(--border-subtle)] text-[13px] leading-relaxed text-[var(--text-secondary)]">
+                              {analysisResults.transcript?.split(' ').map((word, i) => {
+                                 const cleanWord = word.replace(/[^\w]/g, '').toLowerCase();
+                                 const isStuttered = analysisResults.stutteredWords?.some(sw => sw.toLowerCase() === cleanWord);
+                                 return (
+                                    <span key={i} className={isStuttered ? 'bg-red-100 text-red-700 font-bold px-1 rounded mx-0.5' : 'mx-0.5'}>
+                                       {word}
+                                    </span>
+                                 );
+                              })}
+                           </div>
+                        </div>
+
+                        {/* Assessment Comparison (If any) */}
+                        {analysisResults.assessmentComparison && (
+                           <div className="mb-5 shrink-0">
+                              <h4 className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-2">Reading Accuracy ({analysisResults.assessmentComparison.matchScore}%)</h4>
+                              <div className="bg-[var(--bg-base)] p-3 rounded-xl border border-[var(--border-subtle)] space-y-2">
+                                 {analysisResults.assessmentComparison.skippedWords?.length > 0 && (
+                                    <div className="flex gap-2 text-[12px]">
+                                       <span className="font-bold text-red-500 shrink-0">Skipped:</span>
+                                       <span className="text-[var(--text-secondary)]">{analysisResults.assessmentComparison.skippedWords.join(', ')}</span>
+                                    </div>
+                                 )}
+                                 {analysisResults.assessmentComparison.addedWords?.length > 0 && (
+                                    <div className="flex gap-2 text-[12px]">
+                                       <span className="font-bold text-amber-500 shrink-0">Added:</span>
+                                       <span className="text-[var(--text-secondary)]">{analysisResults.assessmentComparison.addedWords.join(', ')}</span>
+                                    </div>
+                                 )}
+                                 {(!analysisResults.assessmentComparison.skippedWords?.length && !analysisResults.assessmentComparison.addedWords?.length) && (
+                                    <div className="text-[12px] text-teal-600 font-medium">Perfectly matched the passage text!</div>
+                                 )}
+                              </div>
+                           </div>
                         )}
+
+                        {/* Weak Sounds */}
+                        {analysisResults.weakSounds && analysisResults.weakSounds.length > 0 && (
+                           <div className="mb-5 shrink-0">
+                              <h4 className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-2">Target Sounds Detected</h4>
+                              <div className="flex flex-wrap gap-2">
+                                 {analysisResults.weakSounds.map(ws => (
+                                    <span key={ws} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[11px] font-black border border-indigo-100">
+                                       /{ws.toUpperCase()}/
+                                    </span>
+                                 ))}
+                              </div>
+                           </div>
+                        )}
+
                      </div>
                   )}
                </div>

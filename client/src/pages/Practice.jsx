@@ -174,16 +174,25 @@ const ExerciseCard = ({ exercise, onComplete, isInitiallyCompleted }) => {
 };
 
 const Practice = () => {
-  const [completedIds, setCompletedIds] = useState([1, 2]);
-  const totalExercises = 5;
+  const [completedIds, setCompletedIds] = useState([]);
+  const [exercises, setExercises] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const exercises = [
-    { id: 1, num: 1, title: 'Sound Prolongation', tag: '/s/ Sound', difficulty: 'Easy', text: 'Sally sells seashells by the seashore.' },
-    { id: 2, num: 2, title: 'Soft Onsets', tag: '/b/ Sound', difficulty: 'Medium', text: 'Beautiful blue birds build big bright baskets.' },
-    { id: 3, num: 3, title: 'Light Contacts', tag: '/t/ Sound', difficulty: 'Easy', text: 'Take two tickets to the tiny town tonight.' },
-    { id: 4, num: 4, title: 'Vocal Ease', tag: 'Vowels', difficulty: 'Medium', text: 'Apples and apricots are always appetizing.' },
-    { id: 5, num: 5, title: 'Flow Control', tag: 'Mixed', difficulty: 'Hard', text: 'Through the thick thicket, the three thinkers thought.' },
-  ];
+  React.useEffect(() => {
+    import('../services/practiceService').then(({ practiceService }) => {
+      practiceService.generateExercises('medium')
+        .then(res => {
+          setExercises(res.data.exercises || []);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Failed to fetch exercises", err);
+          setLoading(false);
+        });
+    });
+  }, []);
+
+  const totalExercises = exercises.length || 5;
 
   const handleComplete = (id) => {
     if (!completedIds.includes(id)) {
@@ -230,16 +239,25 @@ const Practice = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Exercises List */}
         <div className="lg:col-span-2 space-y-8">
-          {exercises.map((ex) => (
-            <ExerciseCard 
-              key={ex.id} 
-              exercise={ex} 
-              onComplete={handleComplete} 
-              isInitiallyCompleted={completedIds.includes(ex.id)}
-            />
-          ))}
+          {exercises.map((ex, index) => {
+            const mappedEx = {
+              id: ex.sentence,
+              num: index + 1,
+              title: `${ex.targetSound} Focus`,
+              tag: ex.soundLabel || ex.targetSound,
+              difficulty: ex.difficulty || 'Medium',
+              text: ex.sentence
+            };
+            return (
+              <ExerciseCard 
+                key={mappedEx.id} 
+                exercise={mappedEx} 
+                onComplete={handleComplete} 
+                isInitiallyCompleted={completedIds.includes(mappedEx.id)}
+              />
+            );
+          })}
         </div>
 
         {/* Info & Goals */}

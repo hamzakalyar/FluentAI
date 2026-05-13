@@ -40,6 +40,7 @@ FLUENCY SCORE:
   Output: 66.5 / 100
 """
 
+# pyrefly: ignore [missing-import]
 import librosa
 import numpy as np
 
@@ -116,7 +117,7 @@ def detect_repetitions(words):
     }
 
 
-def detect_pauses(audio_path, min_pause_duration=0.6, silence_threshold=35):
+def detect_pauses(audio_path, min_pause_duration=0.3, silence_threshold=25):
     """
     Detect abnormally long pauses/silences in the audio.
     
@@ -182,7 +183,7 @@ def detect_audio_level_repetitions(audio_path):
         audio, sr = librosa.load(audio_path, sr=16000)
         
         # Split into speech segments with sensitive threshold
-        intervals = librosa.effects.split(audio, top_db=35)
+        intervals = librosa.effects.split(audio, top_db=25)
         
         if len(intervals) < 2:
             return {"count": 0, "repetitions": []}
@@ -394,8 +395,8 @@ def calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rat
         elif frag_ratio > 0.25:
             score -= 5
     
-    # Penalty for abnormal pauses (-2 per pause)
-    score -= pause_data["count"] * 2
+    # Penalty for abnormal pauses (-5 per pause)
+    score -= pause_data["count"] * 5
     
     # Extra penalty for excessive total pause time
     if pause_data.get("total_duration_ms", 0) > 3000:

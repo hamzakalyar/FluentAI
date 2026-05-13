@@ -100,9 +100,22 @@ export const useRecording = () => {
     }
   }, [status]);
 
-  const startAnalysis = useCallback(() => {
+  const [analysisResults, setAnalysisResults] = useState(null);
+
+  const startAnalysis = useCallback(async (passageId = null) => {
+    if (!audioBlob) return;
     setStatus('processing');
-  }, []);
+    try {
+      // Import here to avoid circular dependency if any, but better to import at top.
+      const { sessionsService } = await import('../services/sessionsService');
+      const response = await sessionsService.analyzeSession(audioBlob, passageId);
+      setAnalysisResults(response.data.session);
+      setStatus('success');
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      setStatus('reviewing'); // Revert back on error
+    }
+  }, [audioBlob]);
 
   const resetRecording = useCallback(() => {
     setStatus('idle');
@@ -118,6 +131,7 @@ export const useRecording = () => {
     duration,
     audioBlob,
     analyser,
+    analysisResults,
     startRecording,
     stopRecording,
     pauseRecording,
