@@ -8,25 +8,34 @@ import {
    Volume2, ShieldCheck, Zap, FileText,
    Calendar, Target, Activity, Trophy,
    Star, MessageSquare, Headphones, Upload, CloudUpload,
-   Clock, FileType, Check, VolumeX
+   Clock, FileType, Check, VolumeX, Info
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useRecording } from '../hooks/useRecording';
 import WaveformCanvas from '../components/features/Recording/WaveformCanvas';
 import { formatDuration } from '../utils/formatMetrics';
+import api from '../services/api';
 
 const RecordingStudio = () => {
    const navigate = useNavigate();
    const [showReRecordModal, setShowReRecordModal] = useState(false);
    const [currentStep, setCurrentStep] = useState(0);
-   const [activePassage, setActivePassage] = useState(1);
-   const [difficulty, setDifficulty] = useState('Medium');
+   const [difficulty, setDifficulty] = useState('medium');
+   const [passages, setPassages] = useState([]);
+   const [activePassage, setActivePassage] = useState(null);
+   const [loadingPassages, setLoadingPassages] = useState(true);
+   
+   // Live Teleprompter State
+   const [liveTranscript, setLiveTranscript] = useState('');
+   const recognitionRef = useRef(null);
 
    const {
       status,
       duration,
       audioBlob,
       analyser,
+      sessionId,
+      analysisError,
       startRecording,
       stopRecording,
       pauseRecording,
@@ -34,6 +43,13 @@ const RecordingStudio = () => {
       startAnalysis,
       resetRecording,
    } = useRecording();
+
+   // Navigate to session detail when analysis succeeds
+   useEffect(() => {
+      if (status === 'success' && sessionId) {
+         navigate(`/sessions/${sessionId}`);
+      }
+   }, [status, sessionId]);
 
    // ── Audio Player State ──
    const audioRef = useRef(null);
@@ -105,25 +121,57 @@ const RecordingStudio = () => {
 
    const activeStep = getActiveStep();
 
-   const allPassages = {
-      Easy: {
-         1: "The cat sat on the mat. The sun is hot today. I like to read books. Let's go for a walk in the park.",
-         2: "The sky is blue. The birds sing in the trees. We can play with a ball. It is time to eat lunch.",
-         3: "A small dog ran fast. He was very happy. The green grass is soft. I saw a red apple on the table."
-      },
-      Medium: {
-         1: "The sun sets slowly over the horizon, painting the sky in shades of amber and violet. It is a peaceful end to a long day.",
-         2: "The rapid development of artificial intelligence is transforming how we interact with technology in our daily lives.",
-         3: "In a quiet corner of the library, the old clock chimed softly. Books of ancient lore lined the shelves, telling stories of old."
-      },
-      Hard: {
-         1: "Philosophical inquiries into the nature of consciousness often encounter the 'hard problem', necessitating a multidisciplinary approach.",
-         2: "Macroeconomic fluctuations in emerging markets are frequently exacerbated by geopolitical instability and the subsequent volatility.",
-         3: "The structural integrity of the architectural marvel was compromised by unprecedented seismic activity, requiring immediate fortification."
-      }
-   };
+   // Fetch passages on mount
+   useEffect(() => {
+      const fetchPassages = async () => {
+         try {
+            setLoadingPassages(true);
+            const res = await api.get('/assessment-passages');
+            // The API returns { passages: [...] }
+            const passageList = res.data.passages || res.data || [];
+            
+            // Group by difficulty
+            const grouped = { easy: [], medium: [], hard: [] };
+            passageList.forEach(p => {
+               if (grouped[p.difficulty]) {
+                  grouped[p.difficulty].push(p);
+               } else {
+                  grouped.medium.push(p); // default fallback
+               }
+            });
+            setPassages(grouped);
+         } catch (err) {
+            console.error('Failed to load passages', err);
+         } finally {
+            setLoadingPassages(false);
+         }
+      };
+      fetchPassages();
+   }, []);
 
-   const currentPassageText = allPassages[difficulty][activePassage];
+   // Fetch full text when a passage is selected or difficulty changes
+   useEffect(() => {
+      if (!passages[difficulty] || passages[difficulty].length === 0) return;
+      
+      const loadFullPassage = async () => {
+         try {
+            // Pick a random passage from the current difficulty
+            const availablePassages = passages[difficulty];
+            const randomPassage = availablePassages[Math.floor(Math.random() * availablePassages.length)];
+            
+            const res = await api.get(`/assessment-passages/${randomPassage.id}`);
+            // The API returns { passage: { ... } }
+            setActivePassage(res.data.passage || res.data);
+            setLiveTranscript(''); // reset transcript on passage change
+         } catch (err) {
+            console.error('Failed to load full passage', err);
+         }
+      };
+      
+      loadFullPassage();
+   }, [difficulty, passages]);
+
+   const currentPassageText = activePassage ? activePassage.text : "Loading passage...";
 
    // ── Processing Step Simulation ──
    useEffect(() => {
@@ -170,7 +218,7 @@ const RecordingStudio = () => {
             </div>
 
             <div className="flex bg-[var(--bg-elevated)] p-1 rounded-xl border border-[var(--border-subtle)] shadow-sm">
-               {['Easy', 'Medium', 'Hard'].map((lvl) => (
+               {['easy', 'medium', 'hard'].map((lvl) => (
                   <button key={lvl} onClick={() => setDifficulty(lvl)} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${difficulty === lvl ? 'bg-[var(--accent)] text-white shadow-md' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>{lvl}</button>
                ))}
             </div>
@@ -223,21 +271,57 @@ const RecordingStudio = () => {
 
             {/* CENTER PANEL */}
             <div className="flex flex-col gap-5 min-h-0 h-full">
-               {/* Practice Passage (Larger & More Prominent) */}
-               <div className="bg-[var(--bg-surface)] rounded-2xl p-5 border border-[var(--border-subtle)] shadow-md relative shrink-0">
-                  <div className="flex items-center justify-between mb-3">
-                     <div className="flex items-center gap-3 text-[var(--text-muted)]">
-                        <FileText size={18} className="text-[var(--accent)]" />
-                        <span className="text-[12px] font-black uppercase tracking-widest">Practice Passage</span>
+               {/* Practice Passage (ApeUni Style) */}
+               <div className="bg-[var(--bg-surface)] rounded-[24px] p-6 border border-[var(--border-subtle)] shadow-lg relative shrink-0">
+                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-[var(--border-subtle)]">
+                     <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[var(--accent)]">
+                           <FileText size={16} />
+                        </div>
+                        <div>
+                           <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Task</span>
+                           <span className="text-[13px] font-bold text-[var(--text-primary)]">Read Aloud</span>
+                        </div>
                      </div>
-                     <div className="flex gap-6">
-                        {[1, 2, 3].map(n => (
-                           <button key={n} onClick={() => setActivePassage(n)} className={`text-[12px] font-black uppercase tracking-widest pb-1 transition-all ${activeStep === 0 ? 'hover:text-[var(--text-secondary)]' : ''} ${activePassage === n ? 'text-[var(--accent)] border-b-2 border-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--text-muted)]'}`}>P{n}</button>
+                     <div className="flex flex-wrap gap-2">
+                        <button 
+                           onClick={async () => {
+                              const res = await api.get(`/assessment-passages/dynamic?difficulty=${difficulty}`);
+                              setActivePassage(res.data.passage || res.data);
+                              setLiveTranscript('');
+                           }} 
+                           className={`px-3 h-8 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${activePassage?.id === 'dynamic' ? 'bg-[var(--accent)] text-white shadow-md' : 'bg-[var(--bg-base)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)]'}`}
+                           title="Generate a random passage"
+                        >
+                           <RotateCcw size={12} className={activePassage?.id === 'dynamic' ? 'animate-spin-once' : ''} /> Random
+                        </button>
+                        <div className="w-[1px] h-8 bg-[var(--border-subtle)] mx-1" />
+                        {!loadingPassages && passages[difficulty]?.map((p, idx) => (
+                           <button 
+                              key={p.id} 
+                              onClick={async () => {
+                                 const res = await api.get(`/assessment-passages/${p.id}`);
+                                 setActivePassage(res.data.passage || res.data);
+                                 setLiveTranscript('');
+                              }} 
+                              className={`w-8 h-8 rounded-lg text-[12px] font-black transition-all ${activePassage?.id === p.id ? 'bg-[var(--accent)] text-white shadow-md' : 'bg-[var(--bg-base)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)]'}`}
+                              title={p.title}
+                           >
+                              {idx + 1}
+                           </button>
                         ))}
                      </div>
                   </div>
-                  <div className="max-h-36 overflow-y-auto pr-2 custom-scrollbar py-2">
-                     <p className="text-[20px] sm:text-[22px] font-medium text-[var(--text-secondary)] leading-relaxed font-serif italic text-center px-6">"{currentPassageText}"</p>
+                  
+                  <div className="mb-4">
+                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 mb-3 text-[10px] font-bold uppercase tracking-widest border border-blue-100">
+                        <Info size={12} /> Read the text below naturally and clearly
+                     </div>
+                     <div className="max-h-48 overflow-y-auto pr-4 custom-scrollbar py-2">
+                        <p className="text-[22px] sm:text-[24px] font-medium text-[var(--text-primary)] leading-[1.6] font-serif selection:bg-[var(--accent)]/20">
+                           {currentPassageText}
+                        </p>
+                     </div>
                   </div>
                </div>
 
@@ -304,7 +388,7 @@ const RecordingStudio = () => {
                            </div>
                         </div>
                         <div className="flex flex-col gap-2 w-full max-w-xs">
-                           <button onClick={startAnalysis} className="h-10 bg-[var(--accent)] text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center gap-2 justify-center shadow-lg">Start Analysis <ArrowRight size={16} /></button>
+                           <button onClick={() => startAnalysis(activePassage?.id, currentPassageText)} className="h-10 bg-[var(--accent)] text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center gap-2 justify-center shadow-lg">Start Analysis <ArrowRight size={16} /></button>
                            <button onClick={() => setShowReRecordModal(true)} className="h-9 border border-red-500/20 text-red-500 rounded-xl font-bold text-[10px] hover:bg-red-500/10 transition-all uppercase tracking-widest flex items-center justify-center gap-2">
                               <RotateCcw size={14} /> Re-record
                            </button>
@@ -315,10 +399,17 @@ const RecordingStudio = () => {
                   {status === 'processing' && (
                      <div className="flex-1 flex flex-col items-center justify-center animate-fade-in py-2">
                         <Loader2 size={32} className="text-[var(--accent)] animate-spin mb-4" />
-                        <h3 className="text-[11px] font-bold text-[var(--text-primary)] mb-4 uppercase tracking-[0.2em]">{currentStep === 4 ? 'Complete!' : 'Processing...'}</h3>
-                        {currentStep === 4 && (
-                           <button onClick={() => navigate('/analytics')} className="mt-2 h-10 bg-[var(--accent)] text-white px-6 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center gap-2 shadow-lg">View Results <ArrowRight size={16} /></button>
-                        )}
+                        <h3 className="text-[11px] font-bold text-[var(--text-primary)] mb-1 uppercase tracking-[0.2em]">Analyzing your speech…</h3>
+                        <p className="text-[10px] text-[var(--text-muted)]">This may take up to 2 minutes</p>
+                     </div>
+                  )}
+
+                  {status === 'error' && (
+                     <div className="flex-1 flex flex-col items-center justify-center animate-fade-in py-2">
+                        <div className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center mb-3"><X size={20} /></div>
+                        <h3 className="text-[11px] font-bold text-red-500 mb-1 uppercase tracking-[0.2em]">Analysis Failed</h3>
+                        <p className="text-[10px] text-[var(--text-muted)] mb-3 text-center max-w-[200px]">{analysisError || 'Something went wrong. Please try again.'}</p>
+                        <button onClick={resetRecording} className="h-9 px-5 rounded-xl border border-red-200 text-red-500 font-bold text-[10px] hover:bg-red-50 transition-all">Try Again</button>
                      </div>
                   )}
                </div>

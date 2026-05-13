@@ -21,7 +21,12 @@ THE FULL PIPELINE (when /analyze is called):
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
+import sys
 import traceback
+
+# CRITICAL FIX FOR WINDOWS: 
+# Ensure ffmpeg.exe located in this folder can be found by Whisper/subprocess
+os.environ["PATH"] += os.pathsep + os.path.dirname(os.path.abspath(__file__))
 
 # Import our modules
 from whisper_service import transcribe_audio, load_model
@@ -159,31 +164,34 @@ def analyze():
         # ============================================
         # STEP 5: ASSESSMENT COMPARISON (if passage was specified)
         # ============================================
-        if passage_id:
+        if passage_id and passage_id != 'dynamic':
             print("📋 Step 5: Comparing expected vs actual text...")
             comparison = compare_expected_vs_actual(passage_id, transcript_data['words'])
             result['assessmentComparison'] = comparison
             print(f"   Accuracy: {comparison.get('accuracy', 0)}%")
             print(f"   Skipped words: {len(comparison.get('skippedWords', []))}")
-            print(f"   Weakest sounds: {[s['sound'] for s in comparison.get('weakestSounds', [])]}")
             
-            # Use assessment weak sounds if detected (more accurate than free analysis)
             if comparison.get('weakestSounds'):
                 assessment_weak = [s['sound'] for s in comparison['weakestSounds']]
                 result['top3WeakSounds'] = assessment_weak[:3]
+                
         elif expected_text:
             print("📋 Step 5: Comparing with provided expected text...")
-            # Custom expected text (not from a passage)
             import re
             expected_words = [w.lower() for w in re.findall(r"[a-zA-Z']+", expected_text)]
             actual_words = [w['word'].lower().strip(".,!?;:'\"") for w in transcript_data['words']]
+            
             matched = sum(1 for w in expected_words if w in actual_words)
-            result['expectedTextComparison'] = {
+            result['assessmentComparison'] = {
+                'passageId': passage_id or 'custom',
                 'expectedWordCount': len(expected_words),
                 'actualWordCount': len(actual_words),
                 'matchedWords': matched,
-                'accuracy': round((matched / len(expected_words)) * 100, 1) if expected_words else 100
+                'accuracy': round((matched / len(expected_words)) * 100, 1) if expected_words else 100,
+                'skippedWords': [],
+                'soundsTestedResults': {}
             }
+            print(f"   Accuracy: {result['assessmentComparison']['accuracy']}%")
 
         print(f"\n✅ Analysis complete! Fluency Score: {metrics['fluencyScore']}/100")
 
@@ -287,6 +295,47 @@ def list_passages():
 def get_passage(passage_id):
     """Get a specific passage with full text and sound map."""
     try:
+        if passage_id == 'dynamic':
+            # Dynamic generation based on difficulty parameter
+            difficulty = request.args.get('difficulty', 'medium')
+            import random
+            from practice_generator import EXERCISE_DATABASE
+            
+            # Gather all sentences for this difficulty across all sounds
+            all_sentences = []
+            for sound, difficulties in EXERCISE_DATABASE.items():
+                if difficulty in difficulties:
+                    all_sentences.extend(difficulties[difficulty])
+            
+            if not all_sentences:
+                return jsonify({'error': 'No sentences found for this difficulty'}), 404
+            
+            # Pick random sentences to form a passage of about 50 words
+            random.shuffle(all_sentences)
+            passage_text = []
+            word_count = 0
+            for sentence in all_sentences:
+                passage_text.append(sentence)
+                word_count += len(sentence.split())
+                if word_count >= 50:
+                    break
+            
+            text = " ".join(passage_text)
+            
+            # Build a mock passage object
+            dynamic_passage = {
+                "id": "dynamic",
+                "title": f"Dynamic Reading ({difficulty.title()})",
+                "description": "A completely randomized reading passage generated on the fly.",
+                "difficulty": difficulty,
+                "estimatedDuration": 30,
+                "targetSounds": ["Mixed"],
+                "text": text,
+                "wordCount": word_count,
+                "soundMap": {} # We can skip soundMap for dynamic, or we could calculate it. Whisper analysis falls back to expectedText.
+            }
+            return jsonify({'passage': dynamic_passage})
+            
         passage = get_passage_by_id(passage_id)
         if not passage:
             return jsonify({'error': 'Passage not found'}), 404

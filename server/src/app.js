@@ -14,6 +14,7 @@ const authRoutes = require('./routes/auth.routes');
 const sessionRoutes = require('./routes/session.routes');
 const { assessmentRouter } = require('./routes/session.routes');
 const practiceRoutes = require('./routes/practice.routes');
+const analyticsRoutes = require('./routes/analytics.routes');
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/assessment-passages', assessmentRouter);
 app.use('/api/practice', practiceRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Play, 
   Download, 
@@ -11,6 +11,7 @@ import {
   Activity
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import api from '../services/api';
 import Card from '../components/shared/Card';
 import Button from '../components/shared/Button';
 import Badge from '../components/shared/Badge';
@@ -59,27 +60,72 @@ const TranscriptViewer = ({ transcript }) => {
 const SessionDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Mock session data
-  const session = {
-    id: id || '#42',
-    title: 'Morning Reading Session',
-    date: 'March 14, 2026',
-    duration: '2m 45s',
-    fluencyScore: 84,
-    wpm: 124,
-    repetitions: 4,
-    pauses: 7,
-    transcript: [
-      { text: 'The' }, { text: 'quick' }, { text: 'brown' }, { text: 'fox' },
-      { type: 'repetition', text: 'jumps', count: 2 }, { text: 'over' }, { text: 'the' },
-      { type: 'pause', duration: 1.2 }, { text: 'lazy' }, { text: 'dog.' },
-      { text: 'He' }, { type: 'repetition', text: 'sat', count: 2 }, { text: 'down' },
-      { text: 'near' }, { text: 'the' }, { text: 'river' }, { text: 'and' },
-      { type: 'pause', duration: 0.8 }, { text: 'watched' }, { text: 'the' },
-      { type: 'repetition', text: 'the', count: 3 }, { text: 'sunset.' }
-    ]
-  };
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get(`/sessions/${id}`);
+        
+        // Transform the backend data into the format expected by the UI
+        const data = res.data.session;
+        
+        // Build an intertwined transcript with stutters
+        const buildTranscript = () => {
+           let result = [];
+           const words = data.transcript?.words || [];
+           const stutters = data.metrics?.detectedStutters || [];
+           
+           // Simple approach: map words, inject stutters
+           words.forEach((w, idx) => {
+              // Check if there's a stutter attached to this position
+              const relatedStutter = stutters.find(s => s.position === w.start || Math.abs(s.position - w.start) < 0.1);
+              
+              if (relatedStutter) {
+                 if (relatedStutter.type === 'repetition') {
+                    result.push({ type: 'repetition', text: w.word, count: 2 });
+                 } else if (relatedStutter.type === 'pause') {
+                    result.push({ type: 'pause', duration: 1 });
+                    result.push({ text: w.word });
+                 } else if (relatedStutter.type === 'filler') {
+                    result.push({ type: 'repetition', text: w.word, count: 1 }); // treat filler visually similar for now
+                 }
+              } else {
+                 result.push({ text: w.word });
+              }
+           });
+           return result;
+        };
+
+        setSession({
+          id: data._id,
+          title: data.passageId ? 'Passage Reading' : 'Practice Session',
+          date: new Date(data.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          duration: `${Math.floor(data.duration / 60)}m ${Math.floor(data.duration % 60)}s`,
+          fluencyScore: data.metrics?.fluencyScore || 0,
+          wpm: data.metrics?.speechRateWPM || 0,
+          repetitions: data.metrics?.repetitionCount || 0,
+          pauses: data.metrics?.pauseCount || 0,
+          transcript: buildTranscript()
+        });
+      } catch (err) {
+        console.error('Failed to load session:', err);
+        setError('Failed to load session data.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchSession();
+  }, [id]);
+
+  if (loading) return <div className="p-12 text-center animate-pulse text-[var(--text-muted)] font-bold tracking-widest uppercase">Loading Session...</div>;
+  if (error) return <div className="p-12 text-center text-red-500 font-bold">{error}</div>;
+  if (!session) return <div className="p-12 text-center">Session not found.</div>;
 
   return (
     <motion.div 

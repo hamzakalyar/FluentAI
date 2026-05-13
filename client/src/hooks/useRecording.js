@@ -1,26 +1,30 @@
 import { useState, useRef, useCallback } from 'react';
+import api from '../services/api';
 
 /**
  * Custom hook to manage the recording state machine.
- * States: idle | permissions | recording | paused | reviewing | processing | success
+ * States: idle | permissions | recording | paused | reviewing | processing | success | error
  */
 export const useRecording = () => {
-  const [status, setStatus] = useState('idle');
-  const [duration, setDuration] = useState(0);
+  const [status,    setStatus]    = useState('idle');
+  const [duration,  setDuration]  = useState(0);
   const [audioBlob, setAudioBlob] = useState(null);
-  const [analyser, setAnalyser] = useState(null);
+  const [analyser,  setAnalyser]  = useState(null);
+  const [sessionId, setSessionId] = useState(null); // ID of the saved session after analysis
+  const [analysisError, setAnalysisError] = useState(null);
 
   const mediaRecorderRef = useRef(null);
-  const audioContextRef = useRef(null);
-  const streamRef = useRef(null);
-  const timerRef = useRef(null);
-  const chunksRef = useRef([]);
+  const audioContextRef  = useRef(null);
+  const streamRef        = useRef(null);
+  const timerRef         = useRef(null);
+  const chunksRef        = useRef([]);
+  const audioBlobRef     = useRef(null); // keep a sync ref alongside state for use in callbacks
 
   const startRecording = useCallback(async () => {
     try {
       setStatus('permissions');
-      
-      // Try to get real mic access
+      setAnalysisError(null);
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         streamRef.current = stream;
@@ -46,14 +50,14 @@ export const useRecording = () => {
         recorder.onstop = () => {
           const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
           setAudioBlob(blob);
+          audioBlobRef.current = blob;
           setStatus('reviewing');
         };
 
         recorder.start();
         setStatus('recording');
       } catch (micError) {
-        console.warn('Microphone access denied or failed. Falling back to simulation mode.', micError);
-        // SIMULATION FALLBACK
+        console.warn('Microphone access denied. Falling back to simulation mode.', micError);
         setStatus('recording');
       }
 
@@ -100,15 +104,53 @@ export const useRecording = () => {
     }
   }, [status]);
 
-  const startAnalysis = useCallback(() => {
+  /**
+   * startAnalysis — upload the recorded audio to the backend for AI analysis.
+   * Sets status to 'processing' while waiting, then 'success' on completion.
+   */
+  const startAnalysis = useCallback(async (passageId = null, expectedText = null) => {
+    const blob = audioBlobRef.current || audioBlob;
+    if (!blob) {
+      console.error('No audio blob available for analysis');
+      return;
+    }
+
     setStatus('processing');
-  }, []);
+    setAnalysisError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('audio', blob, 'session.webm');
+      if (passageId)    formData.append('passageId', passageId);
+      if (expectedText) formData.append('expectedText', expectedText);
+
+      const response = await api.post('/sessions/analyze', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 180000, // 3 min — Whisper can be slow
+      });
+
+      const savedSession = response.data.session;
+      setSessionId(savedSession._id);
+      setStatus('success');
+      return savedSession;
+
+    } catch (error) {
+      const msg = error?.response?.data?.message || error.message || 'Analysis failed';
+      setAnalysisError(msg);
+      setStatus('error');
+      console.error('Analysis error:', msg);
+      throw error;
+    }
+  }, [audioBlob]);
 
   const resetRecording = useCallback(() => {
     setStatus('idle');
     setDuration(0);
     setAudioBlob(null);
     setAnalyser(null);
+    setSessionId(null);
+    setAnalysisError(null);
+    audioBlobRef.current = null;
     chunksRef.current = [];
     if (timerRef.current) clearInterval(timerRef.current);
   }, []);
@@ -118,11 +160,13 @@ export const useRecording = () => {
     duration,
     audioBlob,
     analyser,
+    sessionId,
+    analysisError,
     startRecording,
     stopRecording,
     pauseRecording,
     resumeRecording,
     startAnalysis,
-    resetRecording
+    resetRecording,
   };
 };
