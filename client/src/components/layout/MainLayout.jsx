@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Bell, HelpCircle, Moon, Sun, Mic2, Menu } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
+import { useDashboard } from '../../context/DashboardContext';
 
 const MainLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
@@ -10,6 +11,7 @@ const MainLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { stats } = useDashboard();
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
@@ -71,7 +73,11 @@ const MainLayout = () => {
             <h1 className="font-syne text-[18px] sm:text-[20px] font-bold text-[var(--text-primary)] leading-tight">
               {user?.name?.split(' ')[0] || 'Hassan'}
             </h1>
-            <p className="hidden sm:block text-[11px] font-medium text-[var(--text-muted)]">Here's your fluency overview</p>
+            <p className="hidden sm:block text-[11px] font-medium text-[var(--text-muted)]">
+              {stats?.totalSessions > 0 
+                ? `You've completed ${stats.totalSessions} sessions this week.`
+                : "Here's your fluency overview"}
+            </p>
           </div>
 
           {/* Center: Centered Search (Desktop only) */}

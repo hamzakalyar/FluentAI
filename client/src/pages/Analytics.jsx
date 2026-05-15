@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   BarChart, 
   Bar, 
@@ -32,25 +33,44 @@ import Breadcrumb from '../components/layout/Breadcrumb';
 import { cn } from '../utils/cn';
 import { motion } from 'framer-motion';
 
+import { analyticsService } from '../services/analyticsService';
+import { sessionsService } from '../services/sessionsService';
+
 const Analytics = () => {
+  const navigate = useNavigate();
   const [dateRange, setDateRange] = useState('7d');
+  const [summary, setSummary] = useState(null);
+  const [historicalData, setHistoricalData] = useState([]);
+  const [soundProficiency, setSoundProficiency] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data for analytics
-  const sessionsData = [
-    { name: 'Mar 1', repetitions: 4, pauses: 12, wpm: 105 },
-    { name: 'Mar 2', repetitions: 7, pauses: 8, wpm: 112 },
-    { name: 'Mar 3', repetitions: 3, pauses: 15, wpm: 98 },
-    { name: 'Mar 4', repetitions: 5, pauses: 10, wpm: 118 },
-    { name: 'Mar 5', repetitions: 2, pauses: 6, wpm: 125 },
-    { name: 'Mar 6', repetitions: 6, pauses: 9, wpm: 115 },
-    { name: 'Mar 7', repetitions: 4, pauses: 7, wpm: 130 },
-  ];
+  React.useEffect(() => {
+    const loadAnalytics = async () => {
+      setLoading(true);
+      try {
+        const [summaryRes, historicalRes, soundRes, sessionsRes] = await Promise.all([
+          analyticsService.getSummary(),
+          analyticsService.getHistorical(dateRange),
+          analyticsService.getSoundProgress(),
+          sessionsService.getSessions({ limit: 5 })
+        ]);
+        
+        setSummary(summaryRes.data);
+        setHistoricalData(historicalRes.data.data || []);
+        setSoundProficiency(soundRes.data.soundProficiency || []);
+        setSessions(sessionsRes.data.sessions || []);
+      } catch (err) {
+        console.error("Failed to load analytics data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadAnalytics();
+  }, [dateRange]);
 
-  const soundProficiency = [
-    { sound: '/s/', score: 85, color: '#0D9488' },
-    { sound: '/r/', score: 42, color: '#F59E0B' },
-    { sound: '/th/', score: 68, color: '#3B82F6' },
-  ];
+  if (loading && historicalData.length === 0) return <div className="p-8 animate-pulse text-[var(--text-muted)] font-bold uppercase tracking-widest">Loading Analytics...</div>;
+
 
   // Theme-aware colors for Recharts
   const chartText = "var(--text-muted)";
@@ -80,8 +100,13 @@ const Analytics = () => {
           <ArrowUpRight size={28} strokeWidth={2.5} />
         </div>
         <div className="flex-1">
-          <h4 className="text-[var(--text-primary)] font-black text-lg tracking-tight">Fluency performance is trending upward</h4>
-          <p className="text-[var(--text-secondary)] font-medium text-sm mt-1">Your average WPM has improved by <span className="text-[var(--accent)] font-bold">12%</span> this week. Keep practicing your /r/ sounds to reach your goal.</p>
+          <h4 className="text-[var(--text-primary)] font-black text-lg tracking-tight">
+            {summary?.improvementTrend === 'improving' ? 'Fluency performance is trending upward' : 'Consistent practice leads to improvement'}
+          </h4>
+          <p className="text-[var(--text-secondary)] font-medium text-sm mt-1">
+            Your average fluency score is <span className="text-[var(--accent)] font-bold">{summary?.averageFluencyScore || 0}%</span>. 
+            {summary?.topWeakSounds?.length > 0 ? ` Focusing on your ${summary.topWeakSounds[0].sound} sounds will help you reach your goals faster.` : ' Keep taking assessments to unlock personalized insights.'}
+          </p>
         </div>
         <div className="hidden md:block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest opacity-60">
           Updated 2 hours ago
@@ -130,7 +155,7 @@ const Analytics = () => {
             </div>
             <div className="flex-1 w-full min-h-0 min-w-0">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={sessionsData}>
+                <LineChart data={historicalData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartGrid} />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 700, fill: chartText}} />
                   <YAxis axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 700, fill: chartText}} />
@@ -152,7 +177,7 @@ const Analytics = () => {
             </div>
             <div className="flex-1 w-full min-h-0 min-w-0">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={sessionsData}>
+                <BarChart data={historicalData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartGrid} />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 700, fill: chartText}} />
                   <YAxis axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 700, fill: chartText}} />
@@ -179,7 +204,7 @@ const Analytics = () => {
           </div>
           <div className="flex-1 w-full min-h-0 min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={sessionsData}>
+              <AreaChart data={historicalData}>
                 <defs>
                   <linearGradient id="colorWpm" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#0D9488" stopOpacity={0.15}/>
@@ -254,20 +279,28 @@ const Analytics = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)]">
-                {[1, 2, 3, 4].map((i) => (
-                  <tr key={i} className="hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer group">
-                    <td className="px-6 py-4 text-xs font-bold text-[var(--text-primary)]">Mar 0{i}, 2026</td>
-                    <td className="px-6 py-4 text-xs text-[var(--text-muted)] font-medium">1:{20 + i * 7}s</td>
-                    <td className="px-6 py-4 text-xs text-center text-amber-600 font-black">{4 + i}</td>
-                    <td className="px-6 py-4 text-xs text-center text-indigo-500 font-black">{6 + i}</td>
-                    <td className="px-6 py-4 text-xs text-center text-[var(--text-primary)] font-black">{110 + i * 3}</td>
+                {sessions.length > 0 ? sessions.map((s) => (
+                  <tr key={s._id} className="hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer group" onClick={() => navigate(`/sessions/${s._id}`)}>
+                    <td className="px-6 py-4 text-xs font-bold text-[var(--text-primary)]">
+                      {new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </td>
+                    <td className="px-6 py-4 text-xs text-[var(--text-muted)] font-medium">
+                      {Math.floor(s.duration / 60)}:{(s.duration % 60).toString().padStart(2, '0')}s
+                    </td>
+                    <td className="px-6 py-4 text-xs text-center text-amber-600 font-black">{s.metrics?.repetitionCount || 0}</td>
+                    <td className="px-6 py-4 text-xs text-center text-indigo-500 font-black">{s.metrics?.pauseCount || 0}</td>
+                    <td className="px-6 py-4 text-xs text-center text-[var(--text-primary)] font-black">{s.metrics?.speechRateWPM || 0}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="text-[10px] font-bold text-[var(--text-muted)] group-hover:text-[var(--accent)] transition-all flex items-center justify-end gap-1">
                         View <ChevronRight size={14} />
                       </div>
                     </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-8 text-center text-[var(--text-muted)] font-bold uppercase tracking-widest opacity-40">No sessions recorded yet</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

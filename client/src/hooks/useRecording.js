@@ -102,13 +102,13 @@ export const useRecording = () => {
 
   const [analysisResults, setAnalysisResults] = useState(null);
 
-  const startAnalysis = useCallback(async (passageId = null) => {
+  const startAnalysis = useCallback(async (passageId = null, expectedText = null) => {
     if (!audioBlob) return;
     setStatus('processing');
     try {
       // Import here to avoid circular dependency if any, but better to import at top.
       const { sessionsService } = await import('../services/sessionsService');
-      const response = await sessionsService.analyzeSession(audioBlob, passageId);
+      const response = await sessionsService.analyzeSession(audioBlob, passageId, expectedText);
       setAnalysisResults(response.data.session);
       setStatus('success');
     } catch (error) {

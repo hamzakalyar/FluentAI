@@ -1,14 +1,9 @@
 import React from 'react';
 import { Mic2, ChevronRight, BookOpen, Wind } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-const SESSIONS = [
-  { id: 1, type: 'Free Speech', name: 'Free Speech · 2 min 4 sec', date: 'Today, 11:21 AM', duration: '2:04', score: 91, Icon: Mic2 },
-  { id: 2, type: 'Reading', name: 'Reading Passage · 5 min 40 sec', date: 'Yesterday, 4:15 PM', duration: '5:40', score: 78, Icon: BookOpen },
-  { id: 3, type: 'Exercise', name: 'Breathing Drill · 2 min 30 sec', date: 'May 12, 10:30 AM', duration: '2:30', score: 84, Icon: Wind },
-  { id: 4, type: 'Free Speech', name: 'Free Speech · 1 min 55 sec', date: 'May 11, 2:45 PM', duration: '1:55', score: 55, Icon: Mic2 },
-];
-
-const RecentSessions = () => {
+const RecentSessions = ({ sessions = [] }) => {
+  const navigate = useNavigate();
   return (
     <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-[20px_22px] shadow-sm flex flex-col">
       {/* Card Header */}
@@ -21,11 +16,12 @@ const RecentSessions = () => {
 
       {/* Session Rows */}
       <div className="space-y-0">
-        {SESSIONS.map((session, i) => (
+        {sessions.map((session, i) => (
           <div 
             key={session.id}
+            onClick={() => navigate(`/sessions/${session.id}`)}
             className={`flex items-center h-[56px] px-2 -mx-2 cursor-pointer group transition-all hover:bg-[var(--bg-base)] rounded-lg ${
-              i !== SESSIONS.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''
+              i !== sessions.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''
             }`}
           >
             {/* Left: Icon */}

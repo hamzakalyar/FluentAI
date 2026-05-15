@@ -15,10 +15,15 @@ import Badge from '../components/shared/Badge';
 import Breadcrumb from '../components/layout/Breadcrumb';
 import { cn } from '../utils/cn';
 import { motion } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 
 const Settings = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [confirmEmail, setConfirmEmail] = useState('');
+  
+  const userInitials = user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase() : '??';
+
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return document.documentElement.getAttribute('data-theme') === 'dark';
@@ -117,35 +122,35 @@ const Settings = () => {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8 p-2">
                 <div className="flex items-center gap-6 pb-8 border-b border-[var(--border-subtle)]">
                   <div className="w-20 h-20 bg-[var(--bg-base)] rounded-2xl flex items-center justify-center text-[var(--accent)] relative group cursor-pointer shadow-inner border border-[var(--border-subtle)] text-xl font-black">
-                    HA
+                    {userInitials}
                     <div className="absolute inset-0 bg-[var(--accent-navy)]/60 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center text-white text-[10px] font-black uppercase tracking-widest backdrop-blur-[2px]">
                       Edit
                     </div>
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-xl font-black text-[var(--text-primary)] font-syne">Hassan Ali</h3>
-                    <p className="text-sm text-[var(--text-secondary)] font-medium">Student Account • Joined March 2026</p>
-                    <Badge variant="teal" className="mt-2 py-0.5 px-3 text-[10px]">Premium Member</Badge>
+                    <h3 className="text-xl font-black text-[var(--text-primary)] font-syne">{user?.name || 'User Profile'}</h3>
+                    <p className="text-sm text-[var(--text-secondary)] font-medium">{user?.role === 'patient' ? 'Patient Account' : 'Clinician Account'} • Joined March 2026</p>
+                    <Badge variant="teal" className="mt-2 py-0.5 px-3 text-[10px]">Active Member</Badge>
                   </div>
                   <Button variant="ghost" size="sm" className="hidden md:flex h-9 text-xs">Change Photo</Button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-1">First Name</label>
-                    <Input defaultValue="Hassan" className="bg-[var(--bg-base)] border-none focus:ring-[var(--accent)]/20" />
+                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-1">Full Name</label>
+                    <Input defaultValue={user?.name} className="bg-[var(--bg-base)] border-none focus:ring-[var(--accent)]/20" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-1">Last Name</label>
-                    <Input defaultValue="Ali" className="bg-[var(--bg-base)] border-none focus:ring-[var(--accent)]/20" />
+                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-1">Role</label>
+                    <Input defaultValue={user?.role} disabled className="bg-[var(--bg-base)] border-none opacity-60" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-1">Email Address</label>
-                    <Input defaultValue="hassan@example.com" type="email" className="bg-[var(--bg-base)] border-none focus:ring-[var(--accent)]/20" />
+                    <Input defaultValue={user?.email} type="email" disabled className="bg-[var(--bg-base)] border-none opacity-60" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-1">Phone Number</label>
-                    <Input defaultValue="+92 300 1234567" className="bg-[var(--bg-base)] border-none focus:ring-[var(--accent)]/20" />
+                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-1">Account ID</label>
+                    <Input defaultValue={user?._id || user?.id} disabled className="bg-[var(--bg-base)] border-none opacity-60" />
                   </div>
                 </div>
 

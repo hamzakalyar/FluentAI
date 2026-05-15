@@ -13,10 +13,11 @@ export const sessionsService = {
     });
   },
 
-  analyzeSession: (audioBlob, passageId) => {
+  analyzeSession: (audioBlob, passageId = null, expectedText = null) => {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'session.wav');
     if (passageId) formData.append('passageId', passageId);
+    if (expectedText) formData.append('expectedText', expectedText);
 
     return api.post('/sessions/analyze', formData, {
       headers: {

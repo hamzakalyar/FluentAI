@@ -3,19 +3,38 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer 
 } from 'recharts';
+import { analyticsService } from '../../../services/analyticsService';
 
-const DATA_7D = [
-  { day: 'MON', score: 82 },
-  { day: 'TUE', score: 85 },
-  { day: 'WED', score: 83 },
-  { day: 'THU', score: 88 },
-  { day: 'FRI', score: 86 },
-  { day: 'SAT', score: 89 },
-  { day: 'SUN', score: 91 },
-];
+const WPMTrendChart = ({ initialRange = '7D' }) => {
+  const [range, setRange] = useState(initialRange);
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-const WPMTrendChart = () => {
-  const [range, setRange] = useState('7D');
+  React.useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const timeframe = range.toLowerCase(); // '7d', '30d', etc.
+        const res = await analyticsService.getHistorical(timeframe);
+        
+        // Map backend history (id, score, date) to chart (day, score)
+        const mappedData = res.data.data.map(item => ({
+          day: timeframe === '7d' 
+            ? new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
+            : new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          score: item.score
+        }));
+        
+        setData(mappedData);
+      } catch (err) {
+        console.error("Failed to fetch historical data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [range]);
+
 
   return (
     <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-[20px_22px] shadow-sm flex flex-col min-h-[300px]">
@@ -45,9 +64,14 @@ const WPMTrendChart = () => {
       </div>
 
       {/* Chart Area */}
-      <div className="w-full h-[220px] min-h-[220px] min-w-0 mt-2">
+      <div className="w-full h-[220px] min-h-[220px] min-w-0 mt-2 relative">
+        {loading && (
+          <div className="absolute inset-0 z-10 bg-[var(--bg-surface)]/50 backdrop-blur-[1px] flex items-center justify-center">
+             <div className="w-6 h-6 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
         <ResponsiveContainer width="100%" height="100%" debounce={50}>
-          <AreaChart data={DATA_7D} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.15}/>

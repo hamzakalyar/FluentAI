@@ -7,6 +7,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import VerifyEmailPage from './pages/auth/VerifyEmailPage';
 import { AuthProvider } from './context/AuthContext';
+import { DashboardProvider } from './context/DashboardContext';
 import MainLayout from './components/layout/MainLayout';
 import ProtectedRoute from './components/shared/ProtectedRoute';
 import Toast from './components/shared/Toast';
@@ -38,7 +39,9 @@ function App() {
           {/* Protected Routes */}
           <Route element={
             <ProtectedRoute>
-              <MainLayout />
+              <DashboardProvider>
+                <MainLayout />
+              </DashboardProvider>
             </ProtectedRoute>
           }>
             <Route path="dashboard" element={<Dashboard />} />

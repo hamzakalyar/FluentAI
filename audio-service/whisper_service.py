@@ -32,6 +32,8 @@ HOW IT WORKS:
 import whisper
 import os
 import json
+import librosa
+import numpy as np
 
 # Global model variable — loaded once, reused for all requests
 _model = None
@@ -92,6 +94,24 @@ def transcribe_audio(audio_path):
     """
     model = load_model()
     
+    # Pre-processing: Check if audio is completely silent before running Whisper
+    # This completely prevents all "hallucination loops" and saves processing time.
+    try:
+        audio_data, sr = librosa.load(audio_path, sr=16000)
+        max_amp = np.max(np.abs(audio_data))
+        if max_amp < 0.0001:  # Absolute silence (dead mic)
+            print("🔇 Absolute silence detected. Skipping Whisper transcription.")
+            duration = len(audio_data) / sr if sr > 0 else 0.0
+            return {
+                "text": "",
+                "words": [],
+                "language": "en",
+                "duration": round(duration, 2)
+            }
+    except Exception as e:
+        print(f"⚠️ Silence check failed, proceeding to Whisper: {e}")
+    
+    
     # Transcribe with word-level timestamps enabled
     # This is the KEY feature — without word_timestamps, we only get
     # segment-level timing which is too coarse for stutter detection
@@ -132,12 +152,28 @@ def transcribe_audio(audio_path):
     final_text = " ".join(valid_text_segments).strip()
     
     # Post-processing: Filter out common Whisper hallucinations for short audio
-    hallucinations = ["thank you", "subscribe", "amara.org", "i'm sorry", "thanks for watching", "bye"]
+    hallucinations = [
+        "thank you", "subscribe", "amara.org", "i'm sorry", "thanks for watching", "bye",
+        "umm, let me think", "i i i want to go"
+    ]
+    
+    is_hallucination = False
+    lower_text = final_text.lower()
+    
     if len(final_text.split()) < 8:
-        lower_text = final_text.lower()
         if any(h in lower_text for h in hallucinations):
-            final_text = ""
-            words = []
+            is_hallucination = True
+    else:
+        # Check for infinite loop of the initial prompt words (classic Whisper silence failure)
+        import re
+        clean_words = set(re.findall(r'[a-z]+', lower_text))
+        prompt_words = {"i", "want", "to", "go", "umm", "let", "me", "think"}
+        if len(clean_words) > 0 and clean_words.issubset(prompt_words):
+            is_hallucination = True
+
+    if is_hallucination:
+        final_text = ""
+        words = []
     
     # Calculate total audio duration
     duration = 0.0

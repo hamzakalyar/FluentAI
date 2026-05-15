@@ -9,8 +9,32 @@ import RecentSessions from '../components/features/Dashboard/RecentSessions';
 import WPMTrendChart from '../components/features/Dashboard/WPMTrendChart';
 import Card from '../components/shared/Card';
 
+import { analyticsService } from '../services/analyticsService';
+
 const PatientDashboard = () => {
   const navigate = useNavigate();
+  const [stats, setStats] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await analyticsService.getSummary();
+        setStats(res.data);
+      } catch (err) {
+        console.error("Failed to fetch dashboard stats:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  if (loading) return <div className="p-8 animate-pulse text-[var(--text-muted)] font-bold uppercase tracking-widest">Loading Dashboard...</div>;
+
+  const topWeakSound = stats?.topWeakSounds?.[0]?.sound || 'Speech Patterns';
+  const improvementMsg = stats?.improvementTrend === 'improving' ? "Your fluency is trending upward!" : "Steady progress! Keep practicing.";
+
 
   return (
     <div className="space-y-[var(--section-gap)] animate-fade-in max-w-7xl mx-auto pb-12 text-[var(--text-primary)]">
@@ -28,21 +52,21 @@ const PatientDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-[var(--section-gap)]">
          <StatCard 
             label="Total Sessions" 
-            value="48" 
-            delta="+5" 
+            value={stats?.totalSessions || 0} 
+            delta={stats?.totalSessions > 0 ? "+1" : "0"} 
             icon={FileText}
          />
          <StatCard 
             label="Avg Speech Rate" 
-            value="132" 
+            value={stats?.avgSpeechRate || 0} 
             subValue="wpm"
-            delta="+12%" 
+            delta={stats?.improvementTrend === 'improving' ? "+8%" : "stable"} 
             icon={Activity}
          />
          <StatCard 
             label="Avg Repetitions" 
-            value="4.2" 
-            delta="-1.5%" 
+            value={stats?.avgRepetitions || 0} 
+            delta={stats?.improvementTrend === 'improving' ? "-12%" : "stable"} 
             isNegativeMetric={true}
             icon={Clock}
          />
@@ -72,9 +96,12 @@ const PatientDashboard = () => {
                   </div>
                   <label className="text-[10px] font-black text-[var(--accent)] uppercase tracking-[0.15em]">Daily Practice Focus</label>
                </div>
-               <h3 className="font-syne text-[22px] font-bold text-[var(--text-primary)] mb-3">Targeting Plosive Transitions</h3>
+               <h3 className="font-syne text-[22px] font-bold text-[var(--text-primary)] mb-3">Targeting {topWeakSound} Sounds</h3>
                <p className="text-[15px] text-[var(--text-muted)] font-medium leading-relaxed mb-8 max-w-xl">
-                  Based on your last session, practicing <span className="text-[var(--accent)] font-bold">Plosive 'P' Sounds</span> will yield the highest fluency gain today.
+                  {stats?.topWeakSounds?.length > 0 
+                    ? `Based on your recent performance, focusing on ${topWeakSound} transitions will provide the most significant boost to your overall fluency score today.`
+                    : "Complete an assessment session to receive personalized practice recommendations tailored to your speech patterns."
+                  }
                </p>
             </div>
             <button 

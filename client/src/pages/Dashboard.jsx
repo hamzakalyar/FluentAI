@@ -8,45 +8,44 @@ import StatCard from '../components/features/Dashboard/StatCard';
 import RecentSessions from '../components/features/Dashboard/RecentSessions';
 import WeeklySparkline from '../components/features/Dashboard/WPMTrendChart';
 import { useAuth } from '../context/AuthContext';
+import { useDashboard } from '../context/DashboardContext';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { stats, loading } = useDashboard();
 
-  const stats = [
-    { title: 'Total Sessions',     value: '48',     trend: 'up',   trendValue: '+5',   icon: Mic2 },
-    { title: 'Avg Speech Rate',    value: '132wpm', trend: 'up',   trendValue: '+12%', icon: Activity },
-    { title: 'Avg Repetitions',    value: '4.2',    trend: 'down', trendValue: '-1.5%',icon: Clock },
-  ];
+  if (loading) return <div className="p-12 animate-pulse text-[var(--text-muted)] font-black uppercase tracking-widest text-center">Syncing Analytics...</div>;
 
-  const chartData = [
-    { name: 'Mon', wpm: 120 }, { name: 'Tue', wpm: 132 }, { name: 'Wed', wpm: 101 },
-    { name: 'Thu', wpm: 144 }, { name: 'Fri', wpm: 135 }, { name: 'Sat', wpm: 155 }, { name: 'Sun', wpm: 162 },
-  ];
+  const topWeakSound = stats?.topWeakSounds?.[0]?.sound || 'Patterns';
+  const recentSessionsData = stats?.recentSessions?.map(s => ({
+    id: s.id,
+    type: 'Session',
+    name: `Fluency Check · ${new Date(s.date).toLocaleDateString()}`,
+    date: new Date(s.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    duration: '--',
+    score: s.fluencyScore,
+    Icon: Mic2
+  })) || [];
 
-  const recentSessions = [
-    { id: '1', title: 'Practice Session', date: new Date(),                      duration: 124, fluencyScore: 88 },
-    { id: '2', title: 'Practice Session', date: new Date(Date.now() - 86400000), duration: 340, fluencyScore: 72 },
-    { id: '3', title: 'Practice Session', date: new Date(Date.now() - 172800000),duration: 150, fluencyScore: 91 },
-    { id: '4', title: 'Practice Session', date: new Date(Date.now() - 259200000),duration: 210, fluencyScore: 65 },
-    { id: '5', title: 'Practice Session', date: new Date(Date.now() - 345600000),duration: 180, fluencyScore: 82 },
-  ];
 
   return (
     <div className="space-y-6 animate-fade-in pb-20">
       
       {/* ── TOP ROW: Stat Cards (3 Cols) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {stats.map(s => <StatCard key={s.title} {...s} />)}
+        <StatCard label="Total Sessions" value={stats?.totalSessions || 0} icon={Mic2} delta={stats?.trends?.sessions !== 0 ? `${stats?.trends?.sessions > 0 ? '+' : ''}${stats?.trends?.sessions}` : '0'} />
+        <StatCard label="Avg Speech Rate" value={stats?.avgSpeechRate || 0} subValue="wpm" icon={Activity} delta={`${stats?.trends?.wpm > 0 ? '+' : ''}${stats?.trends?.wpm || 0}%`} />
+        <StatCard label="Avg Repetitions" value={stats?.avgRepetitions || 0} icon={Clock} delta={`${stats?.trends?.repetitions > 0 ? '+' : ''}${stats?.trends?.repetitions || 0}%`} isNegativeMetric={true} />
       </div>
 
       {/* ── MIDDLE ROW: Sessions (3/5) + Chart (2/5) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3">
-          <RecentSessions sessions={recentSessions} />
+          <RecentSessions sessions={recentSessionsData} />
         </div>
         <div className="lg:col-span-2">
-          <WeeklySparkline data={chartData} />
+          <WeeklySparkline range="7D" />
         </div>
       </div>
 
@@ -61,7 +60,7 @@ const Dashboard = () => {
            <div className="relative z-10">
               <h3 className="text-xl font-bold mb-2">Your Practice Recommendation</h3>
               <p className="text-white/80 text-sm mb-8 max-w-sm font-medium leading-relaxed">
-                Based on your last session, practicing <span className="font-bold underline decoration-white/40">Plosive 'P' Sounds</span> will yield the highest fluency gain today.
+                Based on your last session, practicing <span className="font-bold underline decoration-white/40">{topWeakSound} focus</span> will yield the highest fluency gain today.
               </p>
               
               <button 

@@ -17,8 +17,42 @@ import Badge from '../components/shared/Badge';
 import Breadcrumb from '../components/layout/Breadcrumb';
 import Tooltip from '../components/shared/Tooltip';
 import { motion } from 'framer-motion';
+import { sessionsService } from '../services/sessionsService';
 
-const TranscriptViewer = ({ transcript }) => {
+const TranscriptViewer = ({ words, repetitions, pauses }) => {
+  // Construct token list from raw words and analysis
+  const tokens = [];
+  const repetitionIndices = new Set();
+  
+  // Map indices to repetition events
+  const repetitionMap = {};
+  repetitions.forEach(rep => {
+    rep.indices.forEach((idx, i) => {
+      repetitionIndices.add(idx);
+      if (i === 0) { // Only mark the first index as the start of a repetition token
+        repetitionMap[idx] = { text: rep.word, count: rep.times };
+      }
+    });
+  });
+
+  // Map words to tokens
+  words.forEach((w, i) => {
+    // Check for pause BEFORE this word
+    if (i > 0) {
+      const prevWord = words[i-1];
+      const gap = w.start - prevWord.end;
+      if (gap > 0.8) { // If gap > 0.8s, insert a pause token
+        tokens.push({ type: 'pause', duration: gap.toFixed(1) });
+      }
+    }
+
+    if (repetitionMap[i]) {
+      tokens.push({ type: 'repetition', ...repetitionMap[i] });
+    } else if (!repetitionIndices.has(i)) {
+      tokens.push({ text: w.word });
+    }
+  });
+
   return (
     <div className="bg-[var(--bg-elevated)]/50 rounded-3xl p-8 border border-[var(--border-subtle)] min-h-[300px]">
       <div className="flex flex-wrap gap-4 mb-8">
@@ -33,7 +67,7 @@ const TranscriptViewer = ({ transcript }) => {
       </div>
 
       <div className="text-lg md:text-xl text-[var(--text-primary)] leading-[2] font-medium font-sans whitespace-pre-wrap">
-        {transcript.map((token, i) => (
+        {tokens.map((token, i) => (
           <span key={i} className="relative inline-block mr-1.5">
             {token.type === 'repetition' ? (
               <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 px-1 rounded-md border-b-2 border-amber-400 cursor-help group">
@@ -44,7 +78,7 @@ const TranscriptViewer = ({ transcript }) => {
               </span>
             ) : token.type === 'pause' ? (
               <span className="inline-block border-b-2 border-dashed border-indigo-300 mx-1 px-2 text-indigo-400 text-sm font-black tracking-[0.2em]">
-                ....
+                ({token.duration}s)
               </span>
             ) : (
               token.text
@@ -59,27 +93,32 @@ const TranscriptViewer = ({ transcript }) => {
 const SessionDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [session, setSession] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
 
-  // Mock session data
-  const session = {
-    id: id || '#42',
-    title: 'Morning Reading Session',
-    date: 'March 14, 2026',
-    duration: '2m 45s',
-    fluencyScore: 84,
-    wpm: 124,
-    repetitions: 4,
-    pauses: 7,
-    transcript: [
-      { text: 'The' }, { text: 'quick' }, { text: 'brown' }, { text: 'fox' },
-      { type: 'repetition', text: 'jumps', count: 2 }, { text: 'over' }, { text: 'the' },
-      { type: 'pause', duration: 1.2 }, { text: 'lazy' }, { text: 'dog.' },
-      { text: 'He' }, { type: 'repetition', text: 'sat', count: 2 }, { text: 'down' },
-      { text: 'near' }, { text: 'the' }, { text: 'river' }, { text: 'and' },
-      { type: 'pause', duration: 0.8 }, { text: 'watched' }, { text: 'the' },
-      { type: 'repetition', text: 'the', count: 3 }, { text: 'sunset.' }
-    ]
-  };
+  React.useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const res = await sessionsService.getSessionById(id);
+        setSession(res.data.session);
+      } catch (err) {
+        console.error("Failed to load session:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadSession();
+  }, [id]);
+
+  if (loading) return <div className="p-12 animate-pulse text-[var(--text-muted)] font-black uppercase tracking-widest text-center">Loading Session Details...</div>;
+  if (!session) return <div className="p-12 text-center text-red-500 font-bold">Session not found.</div>;
+
+  const formattedDate = new Date(session.createdAt).toLocaleDateString('en-US', { 
+    month: 'long', day: 'numeric', year: 'numeric' 
+  });
+  
+  const formattedDuration = `${Math.floor(session.duration / 60)}m ${Math.round(session.duration % 60)}s`;
+
 
   return (
     <motion.div 
@@ -98,13 +137,15 @@ const SessionDetail = () => {
               <ChevronLeft size={24} />
             </button>
             <div>
-              <h1 className="text-3xl font-black text-[var(--text-primary)] tracking-tight">{session.title}</h1>
+              <h1 className="text-3xl font-black text-[var(--text-primary)] tracking-tight">
+                {session.passageId ? `Assessment: ${session.passageId}` : 'Practice Recording'}
+              </h1>
               <div className="flex items-center gap-3 mt-1">
                 <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-1">
-                  <Calendar size={12} /> {session.date}
+                  <Calendar size={12} /> {formattedDate}
                 </span>
                 <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-1">
-                  <Clock size={12} /> {session.duration}
+                  <Clock size={12} /> {formattedDuration}
                 </span>
               </div>
             </div>
@@ -127,7 +168,11 @@ const SessionDetail = () => {
               </div>
             </div>
             <div className="p-8">
-              <TranscriptViewer transcript={session.transcript} />
+              <TranscriptViewer 
+                words={session.transcript?.words || []} 
+                repetitions={session.metrics?.repetitions || []}
+                pauses={session.metrics?.pauses || []}
+              />
             </div>
             <div className="bg-[var(--bg-elevated)] p-6 flex items-center gap-6 border-t border-[var(--border-subtle)]">
               <button className="w-12 h-12 bg-[var(--accent)] rounded-full flex items-center justify-center text-white hover:scale-105 transition-transform shadow-lg shadow-[var(--accent)]/20">
@@ -136,7 +181,7 @@ const SessionDetail = () => {
               <div className="flex-1 h-1.5 bg-[var(--bg-surface)] rounded-full relative overflow-hidden">
                 <div className="absolute inset-y-0 left-0 w-1/3 bg-[var(--accent)] rounded-full" />
               </div>
-              <span className="text-[var(--text-muted)] text-xs font-mono">0:45 / {session.duration}</span>
+              <span className="text-[var(--text-muted)] text-xs font-mono">0:00 / {formattedDuration}</span>
             </div>
           </Card>
 
@@ -146,19 +191,21 @@ const SessionDetail = () => {
               <div className="p-4 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-100 dark:border-amber-900/20">
                 <h4 className="font-bold text-amber-900 dark:text-amber-400 text-sm mb-2 flex items-center gap-2">
                   <AlertCircle size={16} />
-                  Reduce Repetitions
+                  Dysfluency Alerts
                 </h4>
                 <p className="text-amber-800/70 dark:text-amber-400/60 text-xs leading-relaxed">
-                  You repeated the word "the" 3 times at the end. Try taking a breath before starting a new sentence.
+                  We detected {session.metrics?.repetitionCount || 0} repetitions and {session.metrics?.pauseCount || 0} significant pauses. 
+                  {session.weakSoundsDetected?.length > 0 && ` Your target sounds for next session: ${session.weakSoundsDetected.map(s => s.sound).join(', ')}.`}
                 </p>
               </div>
               <div className="p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-900/20">
                 <h4 className="font-bold text-indigo-900 dark:text-indigo-400 text-sm mb-2 flex items-center gap-2">
                   <Activity size={16} />
-                  Stable Pace
+                  Speech Statistics
                 </h4>
                 <p className="text-indigo-800/70 dark:text-indigo-400/60 text-xs leading-relaxed">
-                  Your speech rate was very consistent (124 WPM). This is a great improvement over your last session.
+                  Your speech rate was {session.metrics?.speechRateWPM || 0} WPM. 
+                  {session.nlpAnalysis?.avoidanceDetected ? " We noticed some possible word avoidance patterns." : " Your word choice was direct and confident."}
                 </p>
               </div>
             </div>
@@ -181,19 +228,19 @@ const SessionDetail = () => {
                 <span className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2">
                   <Mic2 size={14} /> WPM
                 </span>
-                <span className="text-sm font-black text-[var(--text-primary)]">{session.wpm}</span>
+                <span className="text-sm font-black text-[var(--text-primary)]">{session.metrics?.speechRateWPM || 0}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2">
                   <Activity size={14} /> Repetitions
                 </span>
-                <span className="text-sm font-black text-amber-600">{session.repetitions}</span>
+                <span className="text-sm font-black text-amber-600">{session.metrics?.repetitionCount || 0}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2">
                   <Clock size={14} /> Pauses
                 </span>
-                <span className="text-sm font-black text-indigo-600">{session.pauses}</span>
+                <span className="text-sm font-black text-indigo-600">{session.metrics?.pauseCount || 0}</span>
               </div>
             </div>
           </Card>
