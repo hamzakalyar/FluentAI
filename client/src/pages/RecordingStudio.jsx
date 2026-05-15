@@ -8,7 +8,7 @@ import {
    Volume2, ShieldCheck, Zap, FileText,
    Calendar, Target, Activity, Trophy,
    Star, MessageSquare, Headphones, Upload, CloudUpload,
-   Clock, FileType, Check, VolumeX, Info, Quote
+   Clock, FileType, Check, VolumeX
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useRecording } from '../hooks/useRecording';
@@ -21,35 +21,14 @@ const RecordingStudio = () => {
    const navigate = useNavigate();
    const [showReRecordModal, setShowReRecordModal] = useState(false);
    const [currentStep, setCurrentStep] = useState(0);
-   const [passages, setPassages] = useState([]);
-   const [activePassage, setActivePassage] = useState(null);
-   const [loadingPassages, setLoadingPassages] = useState(true);
-
-   // Live Teleprompter State
-   const [liveTranscript, setLiveTranscript] = useState('');
-   const recognitionRef = useRef(null);
-   const fileInputRef = useRef(null);
-
-   const handleFileUpload = (e) => {
-      const file = e.target.files[0];
-      if (file) {
-         const reader = new FileReader();
-         reader.onload = (event) => {
-            const blob = new Blob([event.target.result], { type: file.type });
-            // Logic to handle the uploaded blob
-         };
-         reader.readAsArrayBuffer(file);
-      }
-   };
+   const [activePassage, setActivePassage] = useState(1);
+   const [difficulty, setDifficulty] = useState('Medium');
 
    const {
       status,
       duration,
       audioBlob,
       analyser,
-      sessionId,
-      analysisResults,
-      analysisError,
       startRecording,
       stopRecording,
       pauseRecording,
@@ -57,9 +36,6 @@ const RecordingStudio = () => {
       startAnalysis,
       resetRecording,
    } = useRecording();
-
-   // Removed automatic navigation on success as per user request
-   // User now clicks a "View Result" button to proceed.
 
    // ── Audio Player State ──
    const audioRef = useRef(null);
@@ -131,45 +107,23 @@ const RecordingStudio = () => {
 
    const activeStep = getActiveStep();
 
-   // Fetch passages on mount
-   useEffect(() => {
-      const fetchPassages = async () => {
-         try {
-            setLoadingPassages(true);
-            const res = await api.get('/assessment-passages');
-            // The API returns { passages: [...] }
-            const passageList = res.data.passages || res.data || [];
-
-            setPassages(passageList);
-         } catch (err) {
-            console.error('Failed to load passages', err);
-         } finally {
-            setLoadingPassages(false);
-         }
-      };
-      fetchPassages();
-   }, []);
-
-   // Fetch full text when a passage is selected or passages load
-   useEffect(() => {
-      if (!passages || passages.length === 0) return;
-
-      const loadFullPassage = async () => {
-         try {
-            // Pick a random passage from the list
-            const randomPassage = passages[Math.floor(Math.random() * passages.length)];
-
-            const res = await api.get(`/assessment-passages/${randomPassage.id}`);
-            // The API returns { passage: { ... } }
-            setActivePassage(res.data.passage || res.data);
-            setLiveTranscript(''); // reset transcript on passage change
-         } catch (err) {
-            console.error('Failed to load full passage', err);
-         }
-      };
-
-      loadFullPassage();
-   }, [passages]);
+   const allPassages = {
+      Easy: {
+         1: "The cat sat on the mat. The sun is hot today. I like to read books. Let's go for a walk in the park.",
+         2: "The sky is blue. The birds sing in the trees. We can play with a ball. It is time to eat lunch.",
+         3: "A small dog ran fast. He was very happy. The green grass is soft. I saw a red apple on the table."
+      },
+      Medium: {
+         1: "The sun sets slowly over the horizon, painting the sky in shades of amber and violet. It is a peaceful end to a long day.",
+         2: "The rapid development of artificial intelligence is transforming how we interact with technology in our daily lives.",
+         3: "In a quiet corner of the library, the old clock chimed softly. Books of ancient lore lined the shelves, telling stories of old."
+      },
+      Hard: {
+         1: "Philosophical inquiries into the nature of consciousness often encounter the 'hard problem', necessitating a multidisciplinary approach.",
+         2: "Macroeconomic fluctuations in emerging markets are frequently exacerbated by geopolitical instability and the subsequent volatility.",
+         3: "The structural integrity of the architectural marvel was compromised by unprecedented seismic activity, requiring immediate fortification."
+      }
+   };
 
    const currentPassageText = activePassage ? activePassage.text : "Loading passage...";
 
@@ -208,27 +162,48 @@ const RecordingStudio = () => {
                   </div>
                </div>
 
-               {/* Step Indicator (Refined) */}
-               <div className="hidden lg:flex w-full max-w-md mx-auto items-center justify-center gap-12 relative px-4 py-1 mb-2">
-                  <div className="absolute top-[35%] left-8 right-8 h-[1.5px] bg-[var(--border-subtle)] -z-10 -translate-y-1/2" />
-                  {steps.map((step, idx) => (
-                     <div key={idx} className="flex flex-col items-center justify-center gap-2 bg-[var(--bg-base)] px-3">
-                        <div className={`w-5 h-5 rounded-full border-2 transition-all duration-500 ${activeStep === idx ? 'bg-[var(--accent)] border-[var(--accent)] ring-4 ring-teal-50/20 scale-110 shadow-lg' :
-                           activeStep > idx ? 'bg-[var(--accent)] border-[var(--accent)]' : 'bg-[var(--bg-surface)] border-[var(--border-subtle)]'
-                           }`} />
-                        <span className={`text-[10px] font-black tracking-[0.15em] transition-all uppercase ${activeStep === idx ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'
-                           }`}>
-                           {step.label}
-                        </span>
-                     </div>
-                  ))}
-               </div>
-               {/* Practice Passage (ApeUni Style) */}
-               <div className="bg-[var(--bg-surface)] rounded-[24px] p-3 border border-[var(--border-subtle)] shadow-lg relative shrink-0">
-                  <div className="flex items-center justify-between mb-3 pb-3 border-b border-[var(--border-subtle)]">
-                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[var(--accent)]">
-                           <Target size={16} />
+            {/* Step Indicator (Refined Size) */}
+            <div className="hidden lg:flex flex-1 max-w-md items-center justify-center gap-7 relative px-8">
+               <div className="absolute top-1/2 left-10 right-10 h-[1px] bg-[var(--border-subtle)] -z-10 -translate-y-1/2" />
+               {steps.map((step, idx) => (
+                  <div key={idx} className="flex flex-col items-center justify-center gap-1.5 bg-[var(--bg-base)] px-2">
+                     <div className={`w-3 h-3 rounded-full border-2 transition-all duration-500 ${activeStep === idx ? 'bg-[var(--accent)] border-[var(--accent)] ring-4 ring-teal-50/10' :
+                        activeStep > idx ? 'bg-[var(--accent)] border-[var(--accent)]' : 'bg-[var(--bg-surface)] border-[var(--border-subtle)]'
+                        }`} />
+                     <span className={`text-[9px] font-black tracking-widest transition-all uppercase ${activeStep === idx ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'
+                        }`}>
+                        {step.label}
+                     </span>
+                  </div>
+               ))}
+            </div>
+
+            <div className="flex bg-[var(--bg-elevated)] p-1 rounded-xl border border-[var(--border-subtle)] shadow-sm">
+               {['Easy', 'Medium', 'Hard'].map((lvl) => (
+                  <button key={lvl} onClick={() => setDifficulty(lvl)} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${difficulty === lvl ? 'bg-[var(--accent)] text-white shadow-md' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>{lvl}</button>
+               ))}
+            </div>
+         </div>
+
+         {/* ── MAIN 3-COLUMN WORKSPACE ── */}
+         <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_280px] xl:grid-cols-[280px_1fr_320px] gap-6 flex-1 mt-4 min-h-0">
+
+            {/* LEFT PANEL */}
+            <div className="hidden lg:flex flex-col gap-4 overflow-hidden h-full">
+               <div className="bg-[var(--bg-surface)] rounded-2xl p-4 border border-[var(--border-subtle)] shadow-sm">
+                  <h3 className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3">This Week</h3>
+                  <div className="space-y-4">
+                     {[
+                        { icon: Activity, label: 'Sessions', val: '4', color: 'text-teal-500' },
+                        { icon: Zap, label: 'Avg WPM', val: '108', color: 'text-amber-500' },
+                        { icon: Trophy, label: 'Best Score', val: '87%', color: 'text-indigo-500', valColor: 'text-teal-600' }
+                     ].map((s, i) => (
+                        <div key={i} className="flex items-center justify-between">
+                           <div className="flex items-center gap-3">
+                              <s.icon size={18} className={s.color} />
+                              <span className="text-[13px] font-bold text-[var(--text-secondary)]">{s.label}</span>
+                           </div>
+                           <span className={`text-[15px] font-black ${s.valColor || 'text-[var(--text-primary)]'}`}>{s.val}</span>
                         </div>
                          <div className="flex flex-col">
                             <span className="text-[13px] font-black text-[var(--text-primary)] uppercase tracking-tight">Active Practice</span>
@@ -274,25 +249,31 @@ const RecordingStudio = () => {
                   </div>
                </div>
 
-               {/* MAIN CARD / VISUALIZATION (Fixed size, moves down to fill space) */}
-               <div className="bg-[#0f172a] rounded-[32px] shadow-2xl p-6 sm:p-8 border border-slate-800 h-[320px] flex flex-col relative overflow-hidden shrink-0 group">
-                  {/* Ambient Background Wave (Subtle) */}
-                  <div className="absolute inset-0 opacity-10 pointer-events-none">
-                     <div className="absolute top-1/2 left-0 right-0 h-32 -translate-y-1/2 flex items-center justify-around gap-1 px-4">
-                        {[...Array(40)].map((_, i) => (
-                           <div key={i} className="w-1 bg-teal-500/30 rounded-full animate-pulse" style={{ height: `${20 + Math.random() * 60}%`, animationDelay: `${i * 0.1}s` }} />
+            {/* CENTER PANEL */}
+            <div className="flex flex-col gap-5 min-h-0 h-full">
+               {/* Practice Passage (Larger & More Prominent) */}
+               <div className="bg-[var(--bg-surface)] rounded-2xl p-5 border border-[var(--border-subtle)] shadow-md relative shrink-0">
+                  <div className="flex items-center justify-between mb-3">
+                     <div className="flex items-center gap-3 text-[var(--text-muted)]">
+                        <FileText size={18} className="text-[var(--accent)]" />
+                        <span className="text-[12px] font-black uppercase tracking-widest">Practice Passage</span>
+                     </div>
+                     <div className="flex gap-6">
+                        {[1, 2, 3].map(n => (
+                           <button key={n} onClick={() => setActivePassage(n)} className={`text-[12px] font-black uppercase tracking-widest pb-1 transition-all ${activeStep === 0 ? 'hover:text-[var(--text-secondary)]' : ''} ${activePassage === n ? 'text-[var(--accent)] border-b-2 border-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--text-muted)]'}`}>P{n}</button>
                         ))}
                      </div>
                   </div>
+                  <div className="max-h-36 overflow-y-auto pr-2 custom-scrollbar py-2">
+                     <p className="text-[20px] sm:text-[22px] font-medium text-[var(--text-secondary)] leading-relaxed font-serif italic text-center px-6">"{currentPassageText}"</p>
+                  </div>
+               </div>
 
-                  <div className="flex justify-between items-center px-1 mb-6 relative z-10">
-                     <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">STUDIO CONSOLE</span>
-                     </div>
-                     <span className="text-[14px] font-mono text-slate-400 font-bold bg-slate-800/50 px-3 py-1 rounded-full border border-slate-700/50">
-                        {status === 'recording' ? formatDuration(duration) : '0:00'}
-                     </span>
+               {/* MAIN CARD / VISUALIZATION (Fixed size, moves down to fill space) */}
+               <div className="bg-[var(--bg-surface)] rounded-[32px] shadow-xl p-6 sm:p-8 border border-[var(--border-subtle)] h-[320px] flex flex-col relative overflow-hidden shrink-0">
+                  <div className="flex justify-between items-center px-1 mb-2">
+                     <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">VISUALIZER</span>
+                     <span className="text-[12px] font-mono text-[var(--text-muted)] font-bold">{status === 'recording' ? formatDuration(duration) : '0:00'}</span>
                   </div>
 
                   {status === 'permissions' && (
@@ -375,19 +356,10 @@ const RecordingStudio = () => {
                               </div>
                            </div>
                         </div>
- 
-                        <div className="flex flex-col gap-3 w-full max-w-[280px]">
-                           <button 
-                              onClick={() => startAnalysis(activePassage?.id, currentPassageText)} 
-                              className="h-11 bg-teal-500 text-slate-900 rounded-xl font-black text-[12px] tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 justify-center shadow-[0_0_30px_rgba(20,184,166,0.2)]"
-                           >
-                              PROCEED TO ANALYSIS <ArrowRight size={16} />
-                           </button>
-                           <button 
-                              onClick={() => setShowReRecordModal(true)} 
-                              className="h-9 border border-red-500/20 text-red-400 rounded-xl font-black text-[9px] hover:bg-red-500/10 transition-all uppercase tracking-[0.2em] flex items-center justify-center gap-2"
-                           >
-                              <RotateCcw size={14} /> Discard & Retake
+                        <div className="flex flex-col gap-2 w-full max-w-xs">
+                           <button onClick={startAnalysis} className="h-10 bg-[var(--accent)] text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center gap-2 justify-center shadow-lg">Start Analysis <ArrowRight size={16} /></button>
+                           <button onClick={() => setShowReRecordModal(true)} className="h-9 border border-red-500/20 text-red-500 rounded-xl font-bold text-[10px] hover:bg-red-500/10 transition-all uppercase tracking-widest flex items-center justify-center gap-2">
+                              <RotateCcw size={14} /> Re-record
                            </button>
                         </div>
                      </div>
@@ -396,62 +368,10 @@ const RecordingStudio = () => {
                   {status === 'processing' && (
                      <div className="flex-1 flex flex-col items-center justify-center animate-fade-in py-2">
                         <Loader2 size={32} className="text-[var(--accent)] animate-spin mb-4" />
-                        <h3 className="text-[11px] font-bold text-[var(--text-primary)] mb-1 uppercase tracking-[0.2em]">Analyzing your speech…</h3>
-                        <p className="text-[10px] text-[var(--text-muted)]">This may take up to 2 minutes</p>
-                     </div>
-                  )}
-
-                  {status === 'success' && (
-                     <div className="flex-1 flex flex-col items-center justify-center animate-fade-in relative z-10">
-                        <div className="w-16 h-16 bg-teal-500/20 text-teal-500 rounded-full flex items-center justify-center mb-3 shadow-[0_0_30px_rgba(20,184,166,0.2)]">
-                           <CheckCircle2 size={32} />
-                        </div>
-                        <h3 className="text-[12px] font-black text-slate-200 mb-1 uppercase tracking-[0.2em]">Analysis Complete</h3>
-                        
-                        {/* Quick Score Preview */}
-                        {analysisResults?.metrics && (
-                           <div className="flex items-center gap-4 my-3 px-4 py-2 bg-slate-800/60 rounded-xl border border-slate-700/50">
-                              <div className="text-center">
-                                 <p className="text-2xl font-black text-teal-400">{analysisResults.metrics.fluencyScore}</p>
-                                 <p className="text-[8px] font-bold text-slate-500 uppercase">Score</p>
-                              </div>
-                              <div className="w-px h-8 bg-slate-700" />
-                              <div className="text-center">
-                                 <p className="text-lg font-black text-slate-300">{analysisResults.metrics.speechRateWPM}</p>
-                                 <p className="text-[8px] font-bold text-slate-500 uppercase">WPM</p>
-                              </div>
-                              <div className="w-px h-8 bg-slate-700" />
-                              <div className="text-center">
-                                 <p className="text-lg font-black text-amber-400">{analysisResults.metrics.repetitionCount}</p>
-                                 <p className="text-[8px] font-bold text-slate-500 uppercase">Reps</p>
-                              </div>
-                           </div>
+                        <h3 className="text-[11px] font-bold text-[var(--text-primary)] mb-4 uppercase tracking-[0.2em]">{currentStep === 4 ? 'Complete!' : 'Processing...'}</h3>
+                        {currentStep === 4 && (
+                           <button onClick={() => navigate('/analytics')} className="mt-2 h-10 bg-[var(--accent)] text-white px-6 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center gap-2 shadow-lg">View Results <ArrowRight size={16} /></button>
                         )}
-
-                        <button 
-                           onClick={() => navigate(`/sessions/${sessionId}`)}
-                           className="h-11 px-8 bg-teal-500 text-slate-900 rounded-xl font-black text-[12px] tracking-widest hover:scale-[1.05] active:scale-[0.95] transition-all flex items-center gap-2 justify-center shadow-[0_0_40px_rgba(20,184,166,0.3)]"
-                        >
-                           VIEW FULL REPORT <ChevronRight size={18} />
-                        </button>
-                     </div>
-                  )}
-
-                  {status === 'error' && (
-                     <div className="flex-1 flex flex-col items-center justify-center animate-fade-in py-2 relative z-10">
-                        <div className="w-12 h-12 bg-red-500/20 text-red-500 rounded-2xl flex items-center justify-center mb-4">
-                           <X size={24} />
-                        </div>
-                        <h3 className="text-[11px] font-bold text-red-500 mb-1 uppercase tracking-[0.2em]">Analysis Failed</h3>
-                        <p className="text-[10px] text-slate-400 mb-6 text-center max-w-[220px]">
-                           {analysisError || 'We encountered an error while processing your speech. Please try again.'}
-                        </p>
-                        <button 
-                           onClick={resetRecording} 
-                           className="h-10 px-6 rounded-xl border border-red-500/30 text-red-400 font-black text-[10px] hover:bg-red-500/10 transition-all uppercase tracking-widest"
-                        >
-                           Restart Session
-                        </button>
                      </div>
                   )}
                </div>

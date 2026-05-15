@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AuthLayout from '../../components/layout/AuthLayout';
 import {
@@ -96,12 +96,12 @@ function StyledInput({ error, ...props }) {
 
 /* ═══════════════════════════════════════ */
 const RegisterPage = () => {
-  const [step,       setStep]       = useState(1);
   const [isLoading,  setIsLoading]  = useState(false);
-  const [userEmail,  setUserEmail]  = useState('');
+  const [serverError, setServerError] = useState('');
   const [showPass,   setShowPass]   = useState(false);
   const [showConf,   setShowConf]   = useState(false);
-  const { login } = useAuth();
+  const { register: registerUser } = useAuth();
+  const navigate = useNavigate();
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
@@ -110,44 +110,31 @@ const RegisterPage = () => {
 
   const onSubmit = async (data) => {
     setIsLoading(true);
-    setUserEmail(data.email);
+    setServerError('');
     try {
-      // TODO: Call register service
-      setTimeout(() => { setIsLoading(false); setStep(2); }, 1500);
+      await registerUser(data.name, data.email, data.password);
+      navigate('/dashboard');
     } catch (err) {
-      console.error(err);
+      setServerError(err?.response?.data?.message || 'Registration failed. Please try again.');
+    } finally {
       setIsLoading(false);
     }
   };
 
   return (
     <AuthLayout
-      title={step === 1 ? 'Create your account' : 'Check your inbox'}
-      subtitle={step === 1 ? 'Start your fluency journey today — it\'s free' : `We sent a verification link to ${userEmail}`}
+      title="Create your account"
+      subtitle="Start your fluency journey today — it's free"
     >
-
-      {/* ── Step indicator ── */}
-      {step === 1 && (
-        <div className="flex items-center gap-2 mb-7">
-          {[1, 2].map((s, i) => (
-            <React.Fragment key={s}>
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all"
-                style={{
-                  background: step >= s ? T.teal : '#F3F4F6',
-                  color:      step >= s ? '#fff'  : T.muted,
-                }}
-              >{s}</div>
-              {i === 0 && (
-                <div className="flex-1 h-0.5 rounded-full" style={{ background: step >= 2 ? T.teal : '#E5E7EB' }} />
-              )}
-            </React.Fragment>
-          ))}
+      {/* ── Server error banner ── */}
+      {serverError && (
+        <div
+          className="mb-5 px-4 py-3 rounded-xl text-sm font-medium"
+          style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5' }}
+        >
+          {serverError}
         </div>
       )}
-
-      {/* ── Step 1: Registration form ── */}
-      {step === 1 && (
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
 
           {/* Full name */}
@@ -288,39 +275,6 @@ const RegisterPage = () => {
             </Link>
           </p>
         </form>
-      )}
-
-      {/* ── Step 2: Email sent ── */}
-      {step === 2 && (
-        <div className="text-center py-4">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
-            style={{ background: '#F0FDF9' }}
-          >
-            <Mail size={28} style={{ color: T.teal }} />
-          </div>
-          <p className="text-sm leading-relaxed mb-6" style={{ color: T.text }}>
-            Please check your inbox and click the verification link to activate your account.
-          </p>
-          <div className="pt-5 border-t" style={{ borderColor: T.border }}>
-            <p className="text-xs mb-4" style={{ color: T.muted }}>Didn't receive the email?</p>
-            <button
-              className="h-9 px-5 rounded-xl text-sm font-semibold border transition-colors hover:bg-slate-50"
-              style={{ borderColor: T.border, color: T.navy }}
-            >
-              Resend link
-            </button>
-          </div>
-          <Link
-            to="/login"
-            className="block text-sm mt-5 transition-colors hover:underline"
-            style={{ color: T.muted }}
-          >
-            Back to sign in
-          </Link>
-        </div>
-      )}
-
     </AuthLayout>
   );
 };

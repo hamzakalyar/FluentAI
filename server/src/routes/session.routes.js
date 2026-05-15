@@ -429,7 +429,11 @@ assessmentRouter.get('/', async (req, res) => {
 // GET /api/assessment-passages/:id — Get specific passage
 assessmentRouter.get('/:id', async (req, res) => {
   try {
-    const response = await axios.get(`${PYTHON_SERVICE_URL}/assessment-passages/${req.params.id}`, { timeout: 10000 });
+    const url = new URL(`${PYTHON_SERVICE_URL}/assessment-passages/${req.params.id}`);
+    if (req.query) {
+      Object.keys(req.query).forEach(key => url.searchParams.append(key, req.query[key]));
+    }
+    const response = await axios.get(url.toString(), { timeout: 10000 });
     res.json(response.data);
   } catch (error) {
     if (error.response?.status === 404) {

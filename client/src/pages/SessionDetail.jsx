@@ -7,6 +7,9 @@ import {
   CheckCircle2, XCircle, Pause as PauseIcon
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import Card from '../components/shared/Card';
+import Button from '../components/shared/Button';
+import Badge from '../components/shared/Badge';
 import Breadcrumb from '../components/layout/Breadcrumb';
 import { sessionsService } from '../services/sessionsService';
 
@@ -47,98 +50,27 @@ const MetricCard = ({ icon: Icon, label, value, color = 'text-[var(--accent)]', 
 const SessionDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchSession = async () => {
-      try {
-        setLoading(true);
-        const res = await sessionsService.getSessionById(id);
-        setSession(res.data.session);
-      } catch (err) {
-        console.error('Failed to load session:', err);
-        setError(err.response?.data?.message || 'Failed to load session');
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (id) fetchSession();
-  }, [id]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 size={32} className="text-[var(--accent)] animate-spin" />
-      </div>
-    );
-  }
-
-  if (error || !session) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <XCircle size={48} className="text-red-500" />
-        <h2 className="text-xl font-bold text-[var(--text-primary)]">{error || 'Session not found'}</h2>
-        <button onClick={() => navigate('/dashboard')} className="text-[var(--accent)] font-bold text-sm hover:underline">
-          Back to Dashboard
-        </button>
-      </div>
-    );
-  }
-
-  const m = session.metrics || {};
-  const nlp = session.nlpAnalysis || {};
-  const transcript = session.transcript || {};
-  const comparison = session.assessmentComparison || null;
-  const weakSounds = session.weakSoundsDetected || [];
-  const stutters = m.detectedStutters || [];
-  const pauses = m.pauses || [];
-  const repetitions = m.repetitions || [];
-  const fillers = m.fillers || [];
-  const createdAt = session.createdAt ? new Date(session.createdAt) : new Date();
-
-  const scoreLabel = m.fluencyScore >= 80 ? 'Excellent' : m.fluencyScore >= 60 ? 'Good' : m.fluencyScore >= 40 ? 'Needs Work' : 'Challenging';
-
-  // Build annotated transcript tokens
-  const buildTranscriptTokens = () => {
-    const words = transcript.words || [];
-    if (!words.length) return [{ text: transcript.text || 'No transcript available' }];
-    
-    const stutterMap = {};
-    stutters.forEach(s => {
-      if (s.word && s.position !== undefined) {
-        const key = s.position.toFixed(1);
-        if (!stutterMap[key]) stutterMap[key] = [];
-        stutterMap[key].push(s);
-      }
-    });
-
-    const pausePositions = new Set(pauses.map(p => p.position?.toFixed(1)));
-    const repWords = new Set(repetitions.map(r => r.word?.toLowerCase()));
-    
-    const tokens = [];
-    words.forEach((w, i) => {
-      const posKey = w.start?.toFixed(1);
-      const wordLower = w.word?.toLowerCase()?.replace(/[.,!?;:'"]/g, '');
-      
-      if (pausePositions.has(posKey)) {
-        tokens.push({ type: 'pause' });
-      }
-      
-      if (repWords.has(wordLower)) {
-        tokens.push({ type: 'repetition', text: w.word, count: 2 });
-      } else if (stutterMap[posKey]) {
-        const s = stutterMap[posKey][0];
-        tokens.push({ type: 'stutter', text: w.word, stutterType: s.type, details: s.details });
-      } else {
-        tokens.push({ text: w.word });
-      }
-    });
-    return tokens;
+  // Mock session data
+  const session = {
+    id: id || '#42',
+    title: 'Morning Reading Session',
+    date: 'March 14, 2026',
+    duration: '2m 45s',
+    fluencyScore: 84,
+    wpm: 124,
+    repetitions: 4,
+    pauses: 7,
+    transcript: [
+      { text: 'The' }, { text: 'quick' }, { text: 'brown' }, { text: 'fox' },
+      { type: 'repetition', text: 'jumps', count: 2 }, { text: 'over' }, { text: 'the' },
+      { type: 'pause', duration: 1.2 }, { text: 'lazy' }, { text: 'dog.' },
+      { text: 'He' }, { type: 'repetition', text: 'sat', count: 2 }, { text: 'down' },
+      { text: 'near' }, { text: 'the' }, { text: 'river' }, { text: 'and' },
+      { type: 'pause', duration: 0.8 }, { text: 'watched' }, { text: 'the' },
+      { type: 'repetition', text: 'the', count: 3 }, { text: 'sunset.' }
+    ]
   };
-
-  const tokens = buildTranscriptTokens();
 
   return (
     <div className="animate-fade-in-up pb-12 px-2">

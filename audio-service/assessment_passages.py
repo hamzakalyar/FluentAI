@@ -264,6 +264,123 @@ ASSESSMENT_PASSAGES = {
             "R": ["Robert", "rolling", "rural", "river", "ran", "rare", "rocky", "ridgeline", "Robert", "reading", "relaxed", "remarkably"],
             "L": ["Laura", "loved", "long", "lazily", "lush", "landscape", "Laura", "liked", "large", "lake", "Later", "lawn", "listened", "lovely", "Life", "liberating"]
         }
+    },
+
+    "easy_nature": {
+        "id": "easy_nature",
+        "title": "Nature and Wildlife",
+        "description": "A relaxing passage about nature, containing common conversational vocabulary.",
+        "difficulty": "easy",
+        "estimatedDuration": 25,
+        "targetSounds": ["B", "S", "W", "F"],
+        "text": (
+            "The big yellow sun was shining over the calm sea. "
+            "A small bird flew down to catch a fish in the water. "
+            "We sat on the soft sand and watched the waves. "
+            "It felt wonderful to breathe the fresh salty air. "
+            "By the end of the day, we were happy and relaxed."
+        ),
+        "wordCount": 53,
+        "soundMap": {
+            "B": ["big", "bird", "breathe", "By"],
+            "S": ["sun", "shining", "sea", "small", "sat", "soft", "sand", "salty"],
+            "W": ["was", "water", "We", "watched", "waves", "wonderful", "we", "were"],
+            "F": ["flew", "fish", "felt", "fresh"]
+        }
+    },
+
+    "easy_daily": {
+        "id": "easy_daily",
+        "title": "Daily Routine",
+        "description": "Describes a typical morning routine with simple, everyday words.",
+        "difficulty": "easy",
+        "estimatedDuration": 25,
+        "targetSounds": ["M", "C", "T", "D"],
+        "text": (
+            "Every morning I drink a hot cup of coffee. "
+            "Then I make my bed and take a quick shower. "
+            "My dog waits patiently by the door for his walk. "
+            "We usually take a short stroll around the block. "
+            "Today is going to be a very good day."
+        ),
+        "wordCount": 49,
+        "soundMap": {
+            "M": ["morning", "make", "my", "My"],
+            "C": ["cup", "coffee"],
+            "T": ["Then", "take", "Today", "to"],
+            "D": ["drink", "dog", "door", "day"]
+        }
+    },
+
+    "medium_technology": {
+        "id": "medium_technology",
+        "title": "Modern Technology",
+        "description": "Discusses technology using multisyllabic words and varied sentence structures.",
+        "difficulty": "medium",
+        "estimatedDuration": 35,
+        "targetSounds": ["M", "C", "P", "S"],
+        "text": (
+            "Modern smartphones have completely changed how we communicate with each other. "
+            "People can instantly share photos, messages, and videos across the globe. "
+            "While this connectivity brings us closer, it also creates new challenges. "
+            "Many individuals struggle to disconnect from their digital devices at night. "
+            "Finding a healthy balance requires conscious effort and personal discipline."
+        ),
+        "wordCount": 55,
+        "soundMap": {
+            "M": ["Modern", "messages", "Many"],
+            "C": ["completely", "changed", "communicate", "can", "connectivity", "closer", "creates", "challenges", "conscious"],
+            "P": ["People", "photos", "personal"],
+            "S": ["smartphones", "share", "struggle"]
+        }
+    },
+
+    "medium_travel": {
+        "id": "medium_travel",
+        "title": "Mountain Journey",
+        "description": "A descriptive passage about travel with a mix of fricatives and liquids.",
+        "difficulty": "medium",
+        "estimatedDuration": 35,
+        "targetSounds": ["M", "F", "V", "R", "L"],
+        "text": (
+            "Our journey through the majestic mountains was filled with beautiful sights. "
+            "The winding roads revealed stunning vistas of deep green valleys below. "
+            "We stopped frequently to photograph the vibrant wildflowers near the river. "
+            "Local villagers offered us fresh fruit and warm homemade bread. "
+            "Traveling through this remote region felt like stepping back in time."
+        ),
+        "wordCount": 55,
+        "soundMap": {
+            "M": ["majestic", "mountains"],
+            "F": ["filled", "frequently", "fresh", "fruit", "felt"],
+            "V": ["vistas", "valleys", "vibrant", "villagers"],
+            "R": ["roads", "revealed", "river", "remote", "region"],
+            "L": ["Local", "like"]
+        }
+    },
+
+    "hard_science": {
+        "id": "hard_science",
+        "title": "Neurological Pathways",
+        "description": "Highly complex vocabulary and dense consonant clusters for advanced practice.",
+        "difficulty": "hard",
+        "estimatedDuration": 45,
+        "targetSounds": ["PR", "STR", "SP", "K", "N"],
+        "text": (
+            "The neurological pathways responsible for spontaneous vocalizations are incredibly complex. "
+            "Researchers have struggled to precisely map the intricate networks of the brain. "
+            "Specific structural anomalies occasionally present profound physiological complications. "
+            "Consequently, clinical practitioners prescribe specialized therapeutic protocols. "
+            "Progress primarily depends on consistent practice and strategic psychological reinforcement."
+        ),
+        "wordCount": 49,
+        "soundMap": {
+            "PR": ["present", "profound", "practitioners", "prescribe", "protocols", "Progress", "primarily", "practice"],
+            "STR": ["struggled", "structural", "strategic"],
+            "SP": ["spontaneous", "Specific", "specialized"],
+            "K": ["complex", "Consequently", "clinical", "consistent"],
+            "N": ["neurological", "networks"]
+        }
     }
 }
 

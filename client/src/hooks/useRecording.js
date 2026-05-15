@@ -1,28 +1,26 @@
 import { useState, useRef, useCallback } from 'react';
+import api from '../services/api';
 
 /**
  * Custom hook to manage the recording state machine.
  * States: idle | permissions | recording | paused | reviewing | processing | success | error
  */
 export const useRecording = () => {
-  const [status, setStatus] = useState('idle');
-  const [duration, setDuration] = useState(0);
+  const [status,    setStatus]    = useState('idle');
+  const [duration,  setDuration]  = useState(0);
   const [audioBlob, setAudioBlob] = useState(null);
   const [analyser, setAnalyser] = useState(null);
-  const [sessionId, setSessionId] = useState(null);
-  const [analysisResults, setAnalysisResults] = useState(null);
-  const [analysisError, setAnalysisError] = useState(null);
 
   const mediaRecorderRef = useRef(null);
-  const audioContextRef = useRef(null);
-  const streamRef = useRef(null);
-  const timerRef = useRef(null);
-  const chunksRef = useRef([]);
+  const audioContextRef  = useRef(null);
+  const streamRef        = useRef(null);
+  const timerRef         = useRef(null);
+  const chunksRef        = useRef([]);
+  const audioBlobRef     = useRef(null); // keep a sync ref alongside state for use in callbacks
 
   const startRecording = useCallback(async () => {
     try {
       setStatus('permissions');
-      setAnalysisError(null);
       
       // Try to get real mic access
       try {
@@ -50,14 +48,14 @@ export const useRecording = () => {
         recorder.onstop = () => {
           const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
           setAudioBlob(blob);
+          audioBlobRef.current = blob;
           setStatus('reviewing');
         };
 
         recorder.start();
         setStatus('recording');
       } catch (micError) {
-        console.warn('Microphone access denied or failed. Falling back to simulation mode.', micError);
-        // SIMULATION FALLBACK
+        console.warn('Microphone access denied. Falling back to simulation mode.', micError);
         setStatus('recording');
       }
 
@@ -104,37 +102,15 @@ export const useRecording = () => {
     }
   }, [status]);
 
-  const startAnalysis = useCallback(async (passageId = null) => {
-    if (!audioBlob) return;
+  const startAnalysis = useCallback(() => {
     setStatus('processing');
-    setAnalysisError(null);
-    try {
-      const { sessionsService } = await import('../services/sessionsService');
-      const response = await sessionsService.analyzeSession(audioBlob, passageId);
-      const sessionData = response.data.session;
-      setAnalysisResults(sessionData);
-      setSessionId(sessionData._id || sessionData.id);
-      setStatus('success');
-    } catch (error) {
-      console.error('Analysis failed:', error);
-      const errMsg = error.response?.data?.error?.error
-        || error.response?.data?.error
-        || error.response?.data?.message
-        || error.message
-        || 'Analysis failed. Please try again.';
-      setAnalysisError(typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg));
-      setStatus('error');
-    }
-  }, [audioBlob]);
+  }, []);
 
   const resetRecording = useCallback(() => {
     setStatus('idle');
     setDuration(0);
     setAudioBlob(null);
     setAnalyser(null);
-    setSessionId(null);
-    setAnalysisResults(null);
-    setAnalysisError(null);
     chunksRef.current = [];
     if (timerRef.current) clearInterval(timerRef.current);
   }, []);
@@ -144,14 +120,11 @@ export const useRecording = () => {
     duration,
     audioBlob,
     analyser,
-    sessionId,
-    analysisResults,
-    analysisError,
     startRecording,
     stopRecording,
     pauseRecording,
     resumeRecording,
     startAnalysis,
-    resetRecording
+    resetRecording,
   };
 };

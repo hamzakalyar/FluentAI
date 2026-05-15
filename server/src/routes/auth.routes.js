@@ -13,7 +13,7 @@ const generateToken = (id) => {
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
     // Validate input
     if (!name || !email || !password) {
@@ -30,8 +30,8 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'An account with this email already exists' });
     }
 
-    // Create new user
-    const user = await User.create({ name, email, password });
+    // Create new user (role defaults to 'patient' if not provided)
+    const user = await User.create({ name, email, password, role: role || 'patient' });
     const token = generateToken(user._id);
 
     res.status(201).json({
@@ -120,6 +120,88 @@ router.delete('/user', auth, async (req, res) => {
     
     await User.findByIdAndDelete(req.user._id);
     res.json({ message: 'User account and all associated data successfully deleted' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// POST /api/auth/verify-email — Stub endpoint for email verification
+// (Real implementation would check verification token from email link)
+router.post('/verify-email', async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ message: 'Verification token is required' });
+    }
+
+    // STUB: In a real implementation, this would:
+    // 1. Verify the token signature
+    // 2. Find the user by decoded email
+    // 3. Mark user.emailVerified = true
+    // 4. Delete the temporary verification token
+    
+    res.json({
+      message: 'Email verified successfully',
+      status: 'verified'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// POST /api/auth/forgot-password — Stub endpoint to initiate password reset
+// (Real implementation would send email with reset link)
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    // STUB: In a real implementation, this would:
+    // 1. Find user by email
+    // 2. Generate a password reset token
+    // 3. Send email with reset link containing the token
+    // 4. Return success message
+
+    // For now, just confirm the request was processed
+    res.json({
+      message: 'If an account exists with this email, you will receive a password reset link shortly',
+      status: 'email_sent'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// POST /api/auth/reset-password — Stub endpoint to reset password with token
+// (Real implementation would verify token and update password)
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ message: 'Token and password are required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    // STUB: In a real implementation, this would:
+    // 1. Verify the reset token signature
+    // 2. Find the user by decoded email from token
+    // 3. Hash the new password
+    // 4. Update user.password
+    // 5. Delete/invalidate the reset token
+    // 6. Optionally send confirmation email
+
+    res.json({
+      message: 'Password reset successfully',
+      status: 'password_reset'
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

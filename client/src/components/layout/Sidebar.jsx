@@ -80,30 +80,24 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
 
       {/* ── FOOTER ACTIONS ── */}
       <div className="p-4 border-t border-white/5 space-y-4">
-        <div className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 transition-all group">
-          <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-white/10 group-hover:border-[var(--accent)] transition-all overflow-hidden flex-shrink-0">
-             <span className="text-sm font-bold text-slate-300">{user?.name?.[0]?.toUpperCase() || 'H'}</span>
+        <div className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 transition-all cursor-pointer group">
+          <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-white/10 group-hover:border-[var(--accent)] transition-all overflow-hidden">
+             <User size={16} className="text-slate-400" />
           </div>
           {isOpen && (
             <div className="flex-1 min-w-0">
-               <p className="text-sm font-bold truncate">{user?.name || 'Hassan'}</p>
-               <div className="flex items-center gap-3 mt-1.5">
-                 <button 
-                   onClick={() => navigate('/settings')} 
-                   className="text-[10px] text-slate-500 hover:text-[var(--accent)] font-bold uppercase tracking-wider transition-colors flex items-center gap-1"
-                 >
-                   <Settings size={12} /> Settings
-                 </button>
-                 <button 
-                   onClick={() => { logout(); navigate('/login'); }} 
-                   className="text-[10px] text-slate-500 hover:text-red-400 font-bold uppercase tracking-wider transition-colors flex items-center gap-1"
-                 >
-                   <LogOut size={12} /> Logout
-                 </button>
-               </div>
+               <p className="text-sm font-bold truncate">Hassan Ali</p>
+               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Settings</p>
             </div>
           )}
         </div>
+        <button 
+          onClick={logout}
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-white/5 transition-all group"
+        >
+          <LogOut size={20} className="flex-shrink-0" />
+          {isOpen && <span className="text-[13px] font-bold tracking-tight">Log out</span>}
+        </button>
       </div>
     </aside>
   );
