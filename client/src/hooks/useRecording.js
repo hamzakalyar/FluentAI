@@ -2,13 +2,16 @@ import { useState, useRef, useCallback } from 'react';
 
 /**
  * Custom hook to manage the recording state machine.
- * States: idle | permissions | recording | paused | reviewing | processing | success
+ * States: idle | permissions | recording | paused | reviewing | processing | success | error
  */
 export const useRecording = () => {
   const [status, setStatus] = useState('idle');
   const [duration, setDuration] = useState(0);
   const [audioBlob, setAudioBlob] = useState(null);
   const [analyser, setAnalyser] = useState(null);
+  const [sessionId, setSessionId] = useState(null);
+  const [analysisResults, setAnalysisResults] = useState(null);
+  const [analysisError, setAnalysisError] = useState(null);
 
   const mediaRecorderRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -19,6 +22,7 @@ export const useRecording = () => {
   const startRecording = useCallback(async () => {
     try {
       setStatus('permissions');
+      setAnalysisError(null);
       
       // Try to get real mic access
       try {
@@ -100,20 +104,26 @@ export const useRecording = () => {
     }
   }, [status]);
 
-  const [analysisResults, setAnalysisResults] = useState(null);
-
   const startAnalysis = useCallback(async (passageId = null) => {
     if (!audioBlob) return;
     setStatus('processing');
+    setAnalysisError(null);
     try {
-      // Import here to avoid circular dependency if any, but better to import at top.
       const { sessionsService } = await import('../services/sessionsService');
       const response = await sessionsService.analyzeSession(audioBlob, passageId);
-      setAnalysisResults(response.data.session);
+      const sessionData = response.data.session;
+      setAnalysisResults(sessionData);
+      setSessionId(sessionData._id || sessionData.id);
       setStatus('success');
     } catch (error) {
       console.error('Analysis failed:', error);
-      setStatus('reviewing'); // Revert back on error
+      const errMsg = error.response?.data?.error?.error
+        || error.response?.data?.error
+        || error.response?.data?.message
+        || error.message
+        || 'Analysis failed. Please try again.';
+      setAnalysisError(typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg));
+      setStatus('error');
     }
   }, [audioBlob]);
 
@@ -122,6 +132,9 @@ export const useRecording = () => {
     setDuration(0);
     setAudioBlob(null);
     setAnalyser(null);
+    setSessionId(null);
+    setAnalysisResults(null);
+    setAnalysisError(null);
     chunksRef.current = [];
     if (timerRef.current) clearInterval(timerRef.current);
   }, []);
@@ -131,7 +144,9 @@ export const useRecording = () => {
     duration,
     audioBlob,
     analyser,
+    sessionId,
     analysisResults,
+    analysisError,
     startRecording,
     stopRecording,
     pauseRecording,

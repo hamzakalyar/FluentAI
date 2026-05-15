@@ -283,6 +283,21 @@ def list_passages():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/assessment-passages/dynamic', methods=['GET'])
+def get_dynamic_passage():
+    """Return a random passage for the 'Random' button in RecordingStudio."""
+    import random
+    try:
+        passages = get_all_passages()
+        if not passages:
+            return jsonify({'error': 'No passages available'}), 404
+        chosen = random.choice(passages)
+        full_passage = get_passage_by_id(chosen['id'])
+        return jsonify({'passage': full_passage})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/assessment-passages/<passage_id>', methods=['GET'])
 def get_passage(passage_id):
     """Get a specific passage with full text and sound map."""

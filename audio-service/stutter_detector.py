@@ -44,6 +44,13 @@ FLUENCY SCORE:
 import librosa
 import numpy as np
 
+try:
+    import stutter_solver_service
+    STUTTER_SOLVER_AVAILABLE = True
+except ImportError as e:
+    print(f"Stutter-Solver not available: {e}")
+    STUTTER_SOLVER_AVAILABLE = False
+
 
 def detect_repetitions(words):
     """
@@ -364,41 +371,61 @@ def calculate_speech_rate(words, duration):
     }
 
 
-def calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rate_data, audio_repetition_data=None):
+def merge_transcript_and_stutters(whisper_words, stutters):
+    """
+    Map Stutter-Solver's precise timestamp dysfluencies to the actual words
+    from the Whisper transcript.
+    """
+    merged_events = []
+    for stutter in stutters:
+        # find overlapping words
+        overlapping = [w["word"] for w in whisper_words if not (w["end"] < stutter["start"] or w["start"] > stutter["end"])]
+        
+        # If no strict overlap, find the closest word
+        if not overlapping and whisper_words:
+            closest_word = min(whisper_words, key=lambda w: abs(w["start"] - stutter["start"]))
+            overlapping = [closest_word["word"]]
+            
+        word_text = " ".join(overlapping) if overlapping else "[silence]"
+        merged_events.append({
+            "type": stutter["type"],
+            "word": word_text,
+            "position": stutter["start"],
+            "details": f"{stutter['type'].capitalize()} detected ({int(stutter['confidence'] * 100)}%)"
+        })
+    return merged_events
+
+
+def calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rate_data, audio_repetition_data=None, advanced_stutters=None):
     """
     Calculate a composite fluency score from 0 to 100.
-    
-    SCORING FORMULA (more aggressive to catch real stuttering):
-    score = 100 - penalties
-    
-    Penalties:
-    - Each word repetition EVENT:        -8 points
-    - Each audio-level repetition:       -6 points  (NEW: catches what Whisper misses)
-    - Each abnormal pause:               -5 points
-    - Each filler word:                  -3 points
-    - WPM below 100:                     -2 point per 10 WPM below 100
-    - High fragmentation ratio:          -10 points (NEW)
-    - Total pause duration > 3s:         -5 bonus penalty
     """
     score = 100.0
     
-    # Penalty for word-level repetitions (-8 per event)
-    score -= repetition_data["count"] * 8
-    
-    # Penalty for audio-level repetitions (-6 per event) — NEW
-    if audio_repetition_data:
-        score -= audio_repetition_data.get("count", 0) * 6
-        # Extra penalty for highly fragmented speech
-        frag_ratio = audio_repetition_data.get("fragmentation_ratio", 0)
-        if frag_ratio > 0.4:
-            score -= 10
-        elif frag_ratio > 0.25:
-            score -= 5
+    if advanced_stutters:
+        advanced_reps = len([s for s in advanced_stutters if s["type"] == "repetition"])
+        advanced_blocks = len([s for s in advanced_stutters if s["type"] == "block"])
+        advanced_prolong = len([s for s in advanced_stutters if s["type"] == "prolongation"])
+        
+        score -= advanced_reps * 8
+        score -= advanced_blocks * 10
+        score -= advanced_prolong * 6
+    else:
+        # Penalty for word-level repetitions (-8 per event)
+        score -= repetition_data["count"] * 8
+        
+        # Penalty for audio-level repetitions (-6 per event)
+        if audio_repetition_data:
+            score -= audio_repetition_data.get("count", 0) * 6
+            frag_ratio = audio_repetition_data.get("fragmentation_ratio", 0)
+            if frag_ratio > 0.4:
+                score -= 10
+            elif frag_ratio > 0.25:
+                score -= 5
     
     # Penalty for abnormal pauses (-5 per pause)
     score -= pause_data["count"] * 5
     
-    # Extra penalty for excessive total pause time
     if pause_data.get("total_duration_ms", 0) > 3000:
         score -= 5
     
@@ -408,7 +435,7 @@ def calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rat
     # Penalty for abnormal speech rate
     wpm = speech_rate_data["wpm"]
     if wpm > 0 and wpm < 100:
-        score -= (100 - wpm) / 5  # More aggressive: -2 per 10 WPM below 100
+        score -= (100 - wpm) / 5
     elif wpm > 180:
         score -= (wpm - 180) / 10
     
@@ -421,12 +448,15 @@ def calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rat
 def analyze_audio(audio_path, transcript_data):
     """
     MAIN FUNCTION — Run all detection algorithms on an audio recording.
-    
-    Uses BOTH text-level (Whisper) AND audio-level (Librosa) analysis
-    to catch stuttering that either method alone would miss.
     """
     words = transcript_data.get("words", [])
     duration = transcript_data.get("duration", 0)
+    transcript_text = transcript_data.get("text", "")
+    
+    advanced_stutters = []
+    if STUTTER_SOLVER_AVAILABLE:
+        print("Running Advanced Stutter-Solver AI...")
+        advanced_stutters = stutter_solver_service.predict_stutters(audio_path, transcript_text)
     
     # Run text-based detectors (from Whisper transcript)
     repetition_data = detect_repetitions(words)
@@ -439,16 +469,19 @@ def analyze_audio(audio_path, transcript_data):
     
     print(f"   📊 Text repetitions: {repetition_data['count']}")
     print(f"   📊 Audio repetitions: {audio_rep_data['count']}")
+    if advanced_stutters:
+        print(f"   📊 Advanced Stutter-Solver events: {len(advanced_stutters)}")
     print(f"   📊 Fragmentation: {audio_rep_data.get('fragmentation_ratio', 0):.0%}")
     print(f"   📊 Pauses: {pause_data['count']}")
     print(f"   📊 Fillers: {filler_data['count']}")
     
-    # Merge repetition counts: use the HIGHER of text vs audio detection
     total_repetition_count = max(repetition_data["count"], audio_rep_data["count"])
+    if advanced_stutters:
+        total_repetition_count = max(total_repetition_count, len([s for s in advanced_stutters if s["type"] == "repetition"]))
     
     # Calculate composite fluency score with ALL data
     fluency_score = calculate_fluency_score(
-        repetition_data, pause_data, filler_data, speech_rate_data, audio_rep_data
+        repetition_data, pause_data, filler_data, speech_rate_data, audio_rep_data, advanced_stutters
     )
     
     # Build the complete metrics object
@@ -474,38 +507,38 @@ def analyze_audio(audio_path, transcript_data):
         "totalWords": speech_rate_data["total_words"],
         "durationSeconds": duration,
         "detectedStutters": _build_stutter_timeline(
-            repetition_data, pause_data, filler_data, audio_rep_data
+            repetition_data, pause_data, filler_data, audio_rep_data, advanced_stutters, words
         )
     }
     
     return metrics
 
 
-def _build_stutter_timeline(repetition_data, pause_data, filler_data, audio_rep_data=None):
+def _build_stutter_timeline(repetition_data, pause_data, filler_data, audio_rep_data=None, advanced_stutters=None, whisper_words=None):
     """
-    Build a unified timeline of all detected stuttering events,
-    sorted by position in the audio.
-    Now includes audio-level detections.
+    Build a unified timeline of all detected stuttering events.
     """
     timeline = []
     
-    for r in repetition_data["repetitions"]:
-        timeline.append({
-            "type": "repetition",
-            "word": r["word"],
-            "position": r["position"],
-            "details": f"Repeated {r['times']} times"
-        })
-    
-    # Audio-level repetitions (catches what Whisper misses)
-    if audio_rep_data:
-        for ar in audio_rep_data.get("repetitions", []):
+    if advanced_stutters and whisper_words is not None:
+        timeline.extend(merge_transcript_and_stutters(whisper_words, advanced_stutters))
+    else:
+        for r in repetition_data["repetitions"]:
             timeline.append({
                 "type": "repetition",
-                "word": f"[{ar['type']}]",
-                "position": ar["position"],
-                "details": ar["details"]
+                "word": r["word"],
+                "position": r["position"],
+                "details": f"Repeated {r['times']} times"
             })
+        
+        if audio_rep_data:
+            for ar in audio_rep_data.get("repetitions", []):
+                timeline.append({
+                    "type": "repetition",
+                    "word": f"[{ar['type']}]",
+                    "position": ar["position"],
+                    "details": ar["details"]
+                })
     
     for p in pause_data["pauses"]:
         timeline.append({

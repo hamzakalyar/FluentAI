@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Search, Bell, HelpCircle, Moon, Sun, Mic2, Menu } from 'lucide-react';
+import { Search, Bell, HelpCircle, Moon, Sun, Mic2, Menu, LogOut, Settings, User as UserIcon } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
 
@@ -9,7 +9,16 @@ const MainLayout = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+
+  const formatName = (name) => {
+    if (!name) return 'Hassan';
+    const firstPart = name.split(' ')[0];
+    return firstPart.charAt(0).toUpperCase() + firstPart.slice(1).toLowerCase();
+  };
+
+  const displayName = formatName(user?.name);
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
@@ -69,7 +78,7 @@ const MainLayout = () => {
           {/* Left: Greeting (Screenshot Match) */}
           <div className="flex-shrink-0">
             <h1 className="font-syne text-[18px] sm:text-[20px] font-bold text-[var(--text-primary)] leading-tight">
-              {user?.name?.split(' ')[0] || 'Hassan'}
+              {displayName}
             </h1>
             <p className="hidden sm:block text-[11px] font-medium text-[var(--text-muted)]">Here's your fluency overview</p>
           </div>
@@ -106,9 +115,41 @@ const MainLayout = () => {
 
             <div className="w-[1px] h-4 bg-[var(--border-subtle)] mx-2" />
 
-            <button className="w-[36px] h-[36px] rounded-full bg-[var(--accent)] flex items-center justify-center text-white font-medium text-sm shadow-sm hover:scale-105 transition-all ml-1">
-              {user?.name?.[0] || 'H'}
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                className="w-[36px] h-[36px] rounded-full bg-[var(--accent)] flex items-center justify-center text-white font-medium text-sm shadow-sm hover:scale-105 transition-all ml-1"
+              >
+                {displayName.charAt(0)}
+              </button>
+              
+              {isProfileDropdownOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setIsProfileDropdownOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-48 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl shadow-lg py-1 z-50">
+                    <div className="px-4 py-2 border-b border-[var(--border-subtle)]">
+                      <p className="text-sm font-bold text-[var(--text-primary)]">{user?.name || 'Hassan'}</p>
+                      <p className="text-xs text-[var(--text-muted)] capitalize">{user?.role || 'Patient'}</p>
+                    </div>
+                    <button 
+                      onClick={() => { setIsProfileDropdownOpen(false); navigate('/settings'); }}
+                      className="w-full text-left px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--accent)] transition-colors flex items-center gap-2"
+                    >
+                      <Settings size={14} /> Settings
+                    </button>
+                    <button 
+                      onClick={() => { setIsProfileDropdownOpen(false); logout(); navigate('/login'); }}
+                      className="w-full text-left px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-red-500 transition-colors flex items-center gap-2"
+                    >
+                      <LogOut size={14} /> Logout
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </header>
 
