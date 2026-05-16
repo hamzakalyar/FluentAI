@@ -14,6 +14,9 @@ const sessionSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  audioUrl: {
+    type: String
+  },
   duration: {
     type: Number, // duration in seconds
     default: 0

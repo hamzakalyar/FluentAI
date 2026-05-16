@@ -192,12 +192,14 @@ const MainLayout = () => {
             <Outlet />
           </div>
 
-          <button
-            onClick={() => navigate('/recording')}
-            className="fixed bottom-8 right-8 w-[52px] h-[52px] bg-[#0B0E14] text-white rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all z-50 border border-white/10"
-          >
-            <Mic2 size={22} />
-          </button>
+          {!['/assistant', '/recording'].includes(location.pathname) && (
+            <button
+              onClick={() => navigate('/recording')}
+              className="fixed bottom-8 right-8 w-[52px] h-[52px] bg-[#0B0E14] text-white rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all z-50 border border-white/10"
+            >
+              <Mic2 size={22} />
+            </button>
+          )}
         </main>
       </div>
     </div>

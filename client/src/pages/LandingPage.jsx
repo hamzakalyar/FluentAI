@@ -36,13 +36,13 @@ export default function LandingPage() {
       <Navbar />
 
       {/* ── HERO SECTION ── */}
-      <section className="relative min-h-[90vh] flex items-center pt-32 pb-20 lg:pt-40 lg:pb-0 overflow-hidden">
+      <section id="hero" className="relative min-h-[80vh] flex items-start pt-24 pb-20 lg:pt-28 lg:pb-0 overflow-hidden scroll-mt-20">
         {/* Background Decorative Elements */}
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-teal-500/5 rounded-full blur-[120px] -z-10" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-[100px] -z-10" />
         
         <div className="max-w-7xl mx-auto px-6 w-full">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-24 items-center">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-24 items-start">
 
             {/* ── Left Content ── */}
             <div className="reveal">
@@ -51,7 +51,7 @@ export default function LandingPage() {
                 Next-Gen Clinical Interface
               </div>
 
-              <h1 className="text-5xl lg:text-6xl xl:text-8xl font-black leading-[1.02] tracking-tight mb-8 font-syne">
+              <h1 className="text-5xl lg:text-6xl xl:text-7xl font-black leading-[1.05] tracking-tight mb-8 font-syne">
                 <span className="text-[var(--text-primary)]">Precision</span><br />
                 <span className="bg-gradient-to-r from-teal-600 to-teal-400 bg-clip-text text-transparent">
                   Fluency.
@@ -96,8 +96,8 @@ export default function LandingPage() {
 
             {/* ── Right Content: Live Dashboard Mockup ── */}
             <div className="flex justify-center lg:justify-end reveal delay-200">
-              <div className="w-full max-w-md bg-[var(--bg-surface)] rounded-[40px] p-10 border border-[var(--border-subtle)] shadow-premium relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-40 h-40 bg-teal-500/5 rounded-full -mr-20 -mt-20 blur-3xl group-hover:scale-125 transition-transform duration-1000" />
+              <div className="w-full max-w-sm bg-[var(--bg-surface)] rounded-[32px] p-8 border border-[var(--border-subtle)] shadow-premium relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:scale-125 transition-transform duration-1000" />
                 
                 <div className="flex items-center justify-between mb-10 relative z-10">
                   <div className="flex items-center gap-4">
@@ -140,8 +140,8 @@ export default function LandingPage() {
                     <p className="text-[10px] font-black uppercase tracking-[0.25em] mb-6 text-[var(--text-muted)]">Recent Performance</p>
                     <div className="space-y-4">
                       {[
-                        { date: 'May 12, 2025', score: '94/100', delta: '+3' },
-                        { date: 'May 10, 2025', score: '91/100', delta: '+6' },
+                        { date: 'Today', score: '94/100', delta: '+3' },
+                        { date: 'Yesterday', score: '91/100', delta: '+6' },
                       ].map(({ date, score, delta }) => (
                         <div key={date} className="flex items-center justify-between p-4 bg-[var(--bg-base)] rounded-2xl border border-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] transition-colors">
                           <span className="text-xs font-bold text-[var(--text-secondary)]">{date}</span>
@@ -161,16 +161,16 @@ export default function LandingPage() {
       </section>
 
       {/* ── FEATURES SECTION ── */}
-      <section id="features" className="py-32 bg-[var(--bg-surface)] relative">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-24 reveal">
-            <p className="text-[11px] font-black tracking-[0.4em] uppercase mb-5 text-teal-600">
+      <section id="features" className="py-24 bg-[var(--bg-surface)] relative scroll-mt-20">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-20 reveal">
+            <p className="text-[10px] font-black tracking-[0.4em] uppercase mb-4 text-teal-600">
               Diagnostic Capabilities
             </p>
-            <h2 className="text-5xl lg:text-6xl font-black mb-8 tracking-tight text-[var(--text-primary)] font-syne">
+            <h2 className="text-4xl lg:text-5xl font-black mb-6 tracking-tight text-[var(--text-primary)] font-syne">
               Precision Medicine Tools
             </h2>
-            <p className="text-xl max-w-2xl mx-auto leading-relaxed font-medium text-[var(--text-secondary)]">
+            <p className="text-lg max-w-xl mx-auto leading-relaxed font-medium text-[var(--text-secondary)]">
               State-of-the-art acoustic modeling engineered for precise, objective
               measurements of speech patterns.
             </p>
@@ -194,44 +194,44 @@ export default function LandingPage() {
                 desc: 'Automated generation of detailed session transcripts and quantitative metric reports for review.',
               },
             ].map(({ Icon, title, desc }) => (
-              <div key={title} className="reveal group p-8 rounded-[32px] bg-[var(--bg-base)] border border-[var(--border-subtle)] hover:border-teal-500/30 transition-all duration-500 hover:shadow-premium">
-                <div className="w-16 h-16 rounded-[22px] bg-teal-500/10 flex items-center justify-center mb-10 shadow-sm border border-teal-500/20 group-hover:scale-110 transition-transform">
-                  <Icon size={28} className="text-teal-600" />
+              <div key={title} className="reveal group p-7 rounded-[28px] bg-[var(--bg-base)] border border-[var(--border-subtle)] hover:border-teal-500/30 transition-all duration-500 hover:shadow-premium">
+                <div className="w-14 h-14 rounded-[20px] bg-teal-500/10 flex items-center justify-center mb-8 shadow-sm border border-teal-500/20 group-hover:scale-110 transition-transform">
+                  <Icon size={24} className="text-teal-600" />
                 </div>
-                <h3 className="text-2xl font-black mb-5 tracking-tight text-[var(--text-primary)] font-syne">{title}</h3>
-                <p className="text-base leading-relaxed font-medium text-[var(--text-secondary)]">{desc}</p>
+                <h3 className="text-xl font-black mb-4 tracking-tight text-[var(--text-primary)] font-syne">{title}</h3>
+                <p className="text-sm leading-relaxed font-medium text-[var(--text-secondary)]">{desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── CALL TO ACTION ── */}
-      <section className="py-40 bg-[var(--bg-base)] relative overflow-hidden">
+      {/* ── CALL TO ACTION / HOW IT WORKS ── */}
+      <section id="how-it-works" className="py-24 bg-[var(--bg-base)] relative overflow-hidden scroll-mt-20">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-teal-600/5 rounded-full blur-[160px]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-teal-600/5 rounded-full blur-[160px]" />
         </div>
         
-        <div className="max-w-4xl mx-auto px-6 text-center reveal relative z-10">
-          <div className="w-20 h-20 rounded-[32px] bg-teal-600/10 flex items-center justify-center mx-auto mb-12 border border-teal-500/20 shadow-lg">
-            <ShieldCheck size={36} className="text-teal-600" />
+        <div className="max-w-3xl mx-auto px-6 text-center reveal relative z-10">
+          <div className="w-16 h-16 rounded-[24px] bg-teal-600/10 flex items-center justify-center mx-auto mb-8 border border-teal-500/20 shadow-lg">
+            <ShieldCheck size={28} className="text-teal-600" />
           </div>
-          <h2 className="text-5xl lg:text-7xl font-black mb-10 leading-[1.1] text-[var(--text-primary)] tracking-tighter font-syne">
+          <h2 className="text-4xl lg:text-5xl font-black mb-6 leading-[1.1] text-[var(--text-primary)] tracking-tight font-syne">
             Elevate Speech Therapy<br />
             with <span className="text-teal-600">Objective Data</span>
           </h2>
-          <p className="text-xl mb-16 leading-relaxed text-[var(--text-secondary)] font-medium max-w-2xl mx-auto">
+          <p className="text-lg mb-10 leading-relaxed text-[var(--text-secondary)] font-medium max-w-xl mx-auto">
             Join leading institutions leveraging AI for precise fluency measurement and evidence-based therapy tracking.
           </p>
-          <div className="flex flex-col sm:flex-row gap-6 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
               onClick={() => navigate('/register')}
-              className="h-16 px-12 rounded-2xl font-black text-white text-lg transition-all bg-teal-600 hover:bg-teal-700 shadow-2xl shadow-teal-600/30 active:scale-[0.98]"
+              className="h-14 px-10 rounded-2xl font-black text-white text-base transition-all bg-teal-600 hover:bg-teal-700 shadow-xl shadow-teal-600/20 active:scale-[0.98]"
             >
               Request Access
             </button>
             <button
-              className="h-16 px-12 rounded-2xl font-black text-lg border-2 border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-primary)] transition-all hover:bg-[var(--bg-elevated)] active:scale-[0.98]"
+              className="h-14 px-10 rounded-2xl font-black text-base border-2 border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-primary)] transition-all hover:bg-[var(--bg-elevated)] active:scale-[0.98]"
             >
               Clinical Studies
             </button>
@@ -239,7 +239,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <Footer />
+      <div id="about" className="scroll-mt-20">
+        <Footer />
+      </div>
     </div>
   );
 }

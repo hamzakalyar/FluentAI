@@ -211,29 +211,36 @@ def merge_transcript_and_stutters(whisper_words, stutters):
     return merged
 
 
-def calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rate_data, audio_repetition_data=None, advanced_stutters=None):
-    score = 100.0
+def calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rate_data, audio_repetition_data=None, advanced_stutters=None, total_words=0, duration=0):
+    if total_words == 0:
+        return 0.0
+
+    # 1. Calculate weighted penalty total (P_total) - Balanced Weights
+    p_total = 0.0
+    p_total += repetition_data["count"] * 7.0  # Middle ground
+    p_total += pause_data["count"] * 3.0       # Middle ground
+    p_total += filler_data["count"] * 1.5       # Middle ground
     
-    # Basic penalties
-    score -= repetition_data["count"] * 8
-    score -= pause_data["count"] * 4
-    score -= filler_data["count"] * 2
-    
-    # Advanced AI penalties (Blocks, Prolongations, etc.)
     if advanced_stutters:
         for s in advanced_stutters:
             if s["type"] in ["block", "prolongation"]:
-                score -= 10
+                p_total += 9.0  # Middle ground
             elif s["type"] in ["replace", "missing"]:
-                score -= 5
+                p_total += 4.5  # Middle ground
     
-    # Speech rate penalty (Too slow or too fast)
+    # 2. Normalized Scoring Formula - Balanced Constant
+    # S = max(0, 100 - ((P_total / N) * k))
+    k = 12.5  # Re-centered for meaningful feedback
+    density_penalty = (p_total / total_words) * k
+    score = 100.0 - density_penalty
+    
+    # 3. Handle Speech Rate (WPM) with 15s Threshold
     wpm = speech_rate_data["wpm"]
-    if wpm > 0:
+    if duration >= 15.0 and wpm > 0:
         if wpm < 100:
-            score -= (100 - wpm) / 4  # Penalty for very slow speech
-        elif wpm > 180:
-            score -= (wpm - 180) / 5  # Penalty for rushed speech
+            score -= (100 - wpm) / 5.5
+        elif wpm > 185:
+            score -= (wpm - 185) / 7
             
     return round(max(0, min(100, score)), 1)
 
@@ -261,7 +268,12 @@ def analyze_audio(audio_path, transcript_data):
     pause_data = detect_pauses(audio_path)
     audio_rep_data = detect_audio_level_repetitions(audio_path)
     
-    fluency_score = calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rate_data, audio_rep_data, advanced_stutters)
+    fluency_score = calculate_fluency_score(
+        repetition_data, pause_data, filler_data, speech_rate_data, 
+        audio_rep_data, advanced_stutters,
+        total_words=speech_rate_data["total_words"],
+        duration=duration
+    )
     
     # Count advanced stutters for the summary
     advanced_count = len(advanced_stutters) if advanced_stutters else 0

@@ -18,15 +18,19 @@ const Dashboard = () => {
   if (loading) return <div className="p-12 animate-pulse text-[var(--text-muted)] font-black uppercase tracking-widest text-center">Syncing Analytics...</div>;
 
   const topWeakSound = stats?.topWeakSounds?.[0]?.sound || 'Patterns';
-  const recentSessionsData = stats?.recentSessions?.map(s => ({
-    id: s.id || s._id,
-    type: 'Session',
-    name: `Fluency Check · ${new Date(s.date || s.createdAt).toLocaleDateString()}`,
-    date: new Date(s.date || s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    duration: s.duration ? `${Math.floor(s.duration / 60)}m ${Math.round(s.duration % 60)}s` : '--',
-    score: s.fluencyScore,
-    Icon: Mic2
-  })) || [];
+  const recentActivities = stats?.recentSessions?.map(s => {
+    const isPractice = s.type === 'Practice';
+    return {
+      id: s.id || s._id,
+      type: s.type,
+      name: isPractice ? s.name : `Fluency Check · ${new Date(s.date || s.createdAt).toLocaleDateString()}`,
+      date: new Date(s.date || s.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      duration: s.duration ? `${Math.floor(s.duration / 60)}m ${Math.round(s.duration % 60)}s` : (isPractice ? 'Practice' : '--'),
+      score: s.fluencyScore,
+      Icon: isPractice ? GraduationCap : Mic2,
+      isClickable: !isPractice // Practice results don't have detail pages yet
+    };
+  }) || [];
 
   return (
     <div className="space-y-6 animate-fade-in pb-20">
@@ -38,7 +42,7 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3">
-          <RecentSessions sessions={recentSessionsData} />
+          <RecentSessions sessions={recentActivities} title="Recent Activity" />
         </div>
         <div className="lg:col-span-2">
           <WeeklySparkline range="7D" />

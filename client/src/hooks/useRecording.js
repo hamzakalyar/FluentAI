@@ -128,6 +128,13 @@ export const useRecording = () => {
     }
   }, [audioBlob]);
 
+  const setExternalAudio = useCallback((blob, durationSec = 0) => {
+    setAudioBlob(blob);
+    audioBlobRef.current = blob;
+    setDuration(durationSec);
+    setStatus('reviewing');
+  }, []);
+
   const resetRecording = useCallback(() => {
     setStatus('idle');
     setDuration(0);
@@ -154,6 +161,7 @@ export const useRecording = () => {
     pauseRecording,
     resumeRecording,
     startAnalysis,
-    resetRecording
+    resetRecording,
+    setExternalAudio
   };
 };

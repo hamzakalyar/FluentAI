@@ -41,6 +41,7 @@ const SessionDetail = () => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const audioRef = React.useRef(null);
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -63,6 +64,20 @@ const SessionDetail = () => {
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <Loader2 className="w-12 h-12 text-[var(--accent)] animate-spin mb-4" />
         <p className="text-[var(--text-secondary)] font-bold">Fetching clinical analysis...</p>
+      </div>
+    );
+  }
+
+  if (session?.status === 'processing') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
+        <div className="relative mb-6">
+          <div className="w-20 h-20 rounded-full border-4 border-[var(--accent)]/10 border-t-[var(--accent)] animate-spin" />
+          <Brain className="absolute inset-0 m-auto text-[var(--accent)] w-8 h-8 animate-pulse" />
+        </div>
+        <h2 className="text-2xl font-black text-[var(--text-primary)] mb-2">Analysis in Progress</h2>
+        <p className="text-[var(--text-secondary)] max-w-md mb-8">Our AI models are currently processing your speech patterns. This usually takes 30-60 seconds.</p>
+        <Button variant="ghost" onClick={() => window.location.reload()}>Refresh Page</Button>
       </div>
     );
   }
@@ -90,12 +105,27 @@ const SessionDetail = () => {
   const createdAt = new Date(session.createdAt);
   const scoreLabel = m.fluencyScore >= 80 ? 'Exceptional' : m.fluencyScore >= 60 ? 'Consistent' : 'Practice Needed';
 
+  const handleExport = () => {
+    window.print();
+  };
+
   return (
-    <motion.div 
+     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="animate-fade-in-up pb-12 px-2"
+      className="animate-fade-in-up pb-12 px-2 print-container"
     >
+      <style>{`
+        @media print {
+          .no-print, button, nav, .breadcrumb, aside { display: none !important; }
+          .print-container { padding: 0 !important; margin: 0 !important; }
+          body { background: white !important; color: black !important; }
+          .bg-[var(--bg-surface)], .bg-[var(--bg-elevated)] { background: #f9fafb !important; border: 1px solid #e5e7eb !important; }
+          .text-[var(--accent)] { color: #0d9488 !important; }
+          .shadow-sm, .shadow-lg { shadow: none !important; }
+          .custom-scrollbar { overflow: visible !important; max-height: none !important; }
+        }
+      `}</style>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <Breadcrumb />
@@ -129,17 +159,23 @@ const SessionDetail = () => {
                 size="sm" 
                 className="border-[var(--border-subtle)] text-[var(--accent)] hover:bg-[var(--accent-glow)]"
                 onClick={() => {
-                  const audio = document.getElementById('session-audio');
-                  if (audio) {
-                    audio.currentTime = 0;
-                    audio.play();
+                  if (audioRef.current) {
+                    audioRef.current.currentTime = 0;
+                    audioRef.current.play().catch(e => console.error("Playback failed:", e));
                   }
                 }}
              >
                <Play size={16} className="mr-2" fill="currentColor" /> Replay Session
              </Button>
           )}
-          <Button variant="ghost" size="sm" className="border-[var(--border-subtle)]"><Download size={16} className="mr-2" /> Export</Button>
+           <Button 
+            variant="ghost" 
+            size="sm" 
+            className="border-[var(--border-subtle)]"
+            onClick={handleExport}
+           >
+            <Download size={16} className="mr-2" /> Export
+           </Button>
         </div>
       </div>
 
@@ -268,8 +304,10 @@ const SessionDetail = () => {
               {session.audioUrl && (
                 <div className="px-6 py-4 border-t border-[var(--border-subtle)] bg-[var(--bg-elevated)]/10">
                   <audio 
+                    ref={audioRef}
                     id="session-audio" 
                     controls 
+                    controlsList="nodownload"
                     className="w-full h-10 accent-[var(--accent)]"
                     src={session.audioUrl.startsWith('http') ? session.audioUrl : `http://localhost:3001${session.audioUrl}`}
                   >

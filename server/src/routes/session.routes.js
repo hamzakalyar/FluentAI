@@ -109,6 +109,7 @@ router.post('/analyze', auth, upload.single('audio'), async (req, res) => {
     // STEP 3: Save analysis results to MongoDB
     // ============================================
     session.status = 'completed';
+    session.audioUrl = `/uploads/${req.file.filename}`;
     session.duration = analysis.duration || 0;
     session.transcript = {
       text: analysis.transcript?.text || '',
@@ -222,11 +223,9 @@ router.post('/analyze', auth, upload.single('audio'), async (req, res) => {
       error: error.message
     });
   } finally {
-    // Clean up the uploaded file after processing
-    if (savedFilePath && fs.existsSync(savedFilePath)) {
-      fs.unlinkSync(savedFilePath);
-      console.log(`🗑️ Temp audio file cleaned up`);
-    }
+    // We NO LONGER delete the file here because we need it for later playback in session details.
+    // The uploads are served statically by Express at /uploads
+    console.log(`🎬 Analysis process finished for ${savedFilePath}`);
   }
 });
 

@@ -28,9 +28,7 @@ export default function Navbar() {
 
   return (
     <div
-      className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${
-        scrolled ? "p-4" : "p-0"
-      }`}
+      className="fixed top-0 left-0 right-0 z-[100] transition-all duration-500"
     >
       <header
         className={`mx-auto transition-all duration-500 ${

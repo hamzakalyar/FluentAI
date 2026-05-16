@@ -6,7 +6,7 @@ const AuthLayout = ({ children, title, subtitle }) => {
     <div className="min-h-screen w-full flex bg-[#ECFEFF] relative overflow-hidden">
 
       {/* ── Left Side: Institutional Hero (Desktop Only) ── */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center p-16">
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-start justify-center px-16 pb-16 pt-8">
         {/* Background Depth & AI Imagery */}
         <div className="absolute inset-0 z-0" style={{ background: 'linear-gradient(135deg, #0D2A35 0%, #0F172A 100%)' }} />
         <img 
@@ -48,7 +48,7 @@ const AuthLayout = ({ children, title, subtitle }) => {
       </div>
 
       {/* ── Right Side: Auth Form ── */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 sm:p-12 relative z-10 bg-white">
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start p-6 sm:p-12 pt-6 relative z-10 bg-white">
         {/* HCI-Friendly Subtle Image Backdrop */}
         <div className="absolute bottom-0 right-0 w-full h-full pointer-events-none overflow-hidden opacity-[0.07] z-0">
           <img 

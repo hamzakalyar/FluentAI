@@ -27,6 +27,12 @@ const RecordingStudio = () => {
    const [weeklyStats, setWeeklyStats] = useState(null);
    const [lastSession, setLastSession] = useState(null);
 
+   const audioRef = useRef(null);
+   const fileInputRef = useRef(null);
+   const [isPlaying, setIsPlaying] = useState(false);
+   const [volume, setVolume] = useState(1);
+   const [audioProgress, setAudioProgress] = useState(0);
+
    const {
       status,
       duration,
@@ -41,12 +47,8 @@ const RecordingStudio = () => {
       resumeRecording,
       startAnalysis,
       resetRecording,
+      setExternalAudio
    } = useRecording();
-
-   const audioRef = useRef(null);
-   const [isPlaying, setIsPlaying] = useState(false);
-   const [volume, setVolume] = useState(1);
-   const [audioProgress, setAudioProgress] = useState(0);
 
    useEffect(() => {
       if (audioBlob && audioRef.current) {
@@ -68,6 +70,20 @@ const RecordingStudio = () => {
          const progress = (audioRef.current.currentTime / audioRef.current.duration) * 100;
          setAudioProgress(progress);
       }
+   };
+
+   const handleFileUpload = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const blob = new Blob([file], { type: file.type });
+      const tempAudio = new Audio();
+      tempAudio.src = URL.createObjectURL(blob);
+      
+      tempAudio.onloadedmetadata = () => {
+         setExternalAudio(blob, Math.round(tempAudio.duration));
+         URL.revokeObjectURL(tempAudio.src);
+      };
    };
 
    const steps = [
@@ -210,12 +226,22 @@ const RecordingStudio = () => {
                               </button>
                               <span className="text-[10px] font-black text-white uppercase tracking-widest">START LIVE</span>
                            </div>
-                           <div className="flex flex-col items-center gap-3 opacity-70">
-                              <button className="group relative w-16 h-16 rounded-full bg-[#1E293B] border border-slate-700 flex items-center justify-center">
-                                 <CloudUpload size={22} className="text-slate-300" />
-                              </button>
-                              <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">UPLOAD DEVICE</span>
-                           </div>
+                           <div className="flex flex-col items-center gap-3">
+                               <input 
+                                 type="file" 
+                                 ref={fileInputRef} 
+                                 onChange={handleFileUpload} 
+                                 accept="audio/*" 
+                                 className="hidden" 
+                               />
+                               <button 
+                                 onClick={() => fileInputRef.current?.click()}
+                                 className="group relative w-16 h-16 rounded-full bg-[#1E293B] border border-slate-700 flex items-center justify-center hover:bg-slate-800 hover:border-teal-500/50 transition-all active:scale-95"
+                               >
+                                  <CloudUpload size={22} className="text-slate-300 group-hover:text-teal-400" />
+                               </button>
+                               <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">UPLOAD DEVICE</span>
+                            </div>
                         </div>
                      </div>
                   )}
@@ -288,7 +314,7 @@ const RecordingStudio = () => {
                <div className="bg-white rounded-[20px] border border-[var(--border-subtle)] p-4 shadow-sm shrink-0">
                   <div className="flex items-center justify-between mb-2">
                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">WEEKLY GOAL</span>
-                     <span className="text-[11px] font-black text-teal-600">57%</span>
+                     <span className="text-[11px] font-black text-teal-600">{weeklyStats?.totalSessions > 0 ? Math.round(Math.min(((weeklyStats?.totalSessions || 0) / 7) * 100, 100)) : 0}%</span>
                   </div>
                   <div className="flex items-center gap-4">
                      <div className="relative w-12 h-12 shrink-0">

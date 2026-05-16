@@ -134,7 +134,7 @@ const AiAssistant = () => {
   };
 
   return (
-    <div className="animate-fade-in-up relative h-[calc(100vh-130px)] transition-colors duration-300 overflow-hidden flex flex-col">
+    <div className="animate-fade-in-up relative h-[calc(100vh-100px)] transition-colors duration-300 overflow-hidden flex flex-col">
       {/* Background Decor - Ultra Minimal */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[var(--accent)]/5 rounded-full blur-[120px] -z-10 pointer-events-none opacity-30" />
 
@@ -152,8 +152,8 @@ const AiAssistant = () => {
       {/* ── MAIN WORKSPACE ── */}
       <div className="flex flex-1 gap-8 min-h-0 overflow-hidden">
 
-        {/* ── Sidebar (Compact) ── */}
-        <div className="hidden lg:flex flex-col w-[240px] flex-shrink-0 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[24px] overflow-hidden">
+        {/* ── Sidebar (Refined) ── */}
+        <div className="hidden lg:flex flex-col w-[280px] flex-shrink-0 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[24px] overflow-hidden">
           <div className="p-4 border-b border-[var(--border-subtle)] bg-[var(--bg-base)]/50">
             <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2">
               <Clock size={13} />
@@ -217,26 +217,26 @@ const AiAssistant = () => {
             </div>
           </div>
 
-          {/* Messages (Density Optimized) */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-            <div className="max-w-3xl mx-auto space-y-5">
+          {/* Messages (Spacious Density) */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-5">
+            <div className="max-w-4xl mx-auto space-y-4">
               {messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}>
-                  <div className={`max-w-[80%] flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                    <div className={`px-4 py-3 rounded-2xl border transition-all ${
+                  <div className={`max-w-[70%] flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    <div className={`px-3.5 py-2 rounded-[20px] border transition-all ${
                       msg.role === 'user' 
-                        ? 'bg-gradient-to-br from-indigo-600 to-indigo-700 border-indigo-500 text-white rounded-tr-none shadow-md shadow-indigo-500/10' 
+                        ? 'bg-gradient-to-br from-indigo-600 to-indigo-700 border-indigo-500 text-white rounded-tr-none shadow-sm' 
                         : msg.isInsight 
                           ? 'bg-[var(--bg-elevated)] border-teal-500/30 text-[var(--text-primary)] rounded-tl-none ring-1 ring-teal-500/10 shadow-sm'
                           : 'bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-primary)] rounded-tl-none shadow-sm'
                     }`}>
                       {msg.isInsight && (
-                        <div className="flex items-center gap-1.5 mb-2 pb-1.5 border-b border-[var(--border-subtle)]">
-                          <Activity size={13} className="text-teal-500" />
-                          <span className="text-[9px] font-black text-teal-500 uppercase tracking-widest">Clinical insight</span>
+                        <div className="flex items-center gap-1.5 mb-1.5 pb-1 border-b border-[var(--border-subtle)]">
+                          <Activity size={11} className="text-teal-500" />
+                          <span className="text-[8px] font-black text-teal-500 uppercase tracking-widest">Clinical insight</span>
                         </div>
                       )}
-                      <p className="text-[14px] leading-relaxed font-medium">{msg.content}</p>
+                      <p className="text-[12.5px] leading-relaxed font-medium">{msg.content}</p>
                     </div>
                     <div className="flex items-center gap-2 mt-1.5 px-1 opacity-50">
                       <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase">{msg.time}</span>
@@ -264,8 +264,8 @@ const AiAssistant = () => {
           </div>
 
           {/* Input Area (Compact Hub) */}
-          <div className="px-6 py-4 border-t border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 backdrop-blur-md">
-            <div className="flex items-center gap-2 mb-3 overflow-x-auto no-scrollbar max-w-3xl mx-auto">
+          <div className="px-5 py-4 border-t border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 backdrop-blur-md">
+            <div className="flex items-center gap-2 mb-3 overflow-x-auto no-scrollbar max-w-5xl mx-auto">
               {CHIPS.map((chip, i) => (
                 <button
                   key={i}
@@ -276,32 +276,32 @@ const AiAssistant = () => {
                 </button>
               ))}
             </div>
-            <form onSubmit={handleSubmit} className="relative flex items-center gap-3 max-w-3xl mx-auto w-full">
+            <form onSubmit={handleSubmit} className="relative flex items-center gap-3 max-w-5xl mx-auto w-full">
               <div className="relative flex-1 group">
                 <input
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Optimize clinical thread..."
-                  className="w-full bg-[var(--bg-base)] border border-[var(--border-subtle)] rounded-xl py-3.5 pl-5 pr-12 text-[14px] font-medium text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-indigo-500/50 transition-all shadow-inner"
+                  className="w-full bg-[var(--bg-base)] border border-[var(--border-subtle)] rounded-xl py-2.5 pl-4 pr-10 text-[13px] font-medium text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-indigo-500/50 transition-all shadow-inner"
                 />
-                <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-                  <button type="button" className="p-1.5 text-[var(--text-muted)] hover:text-indigo-400 transition-colors">
-                    <Mic size={18} />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <button type="button" className="p-1 text-[var(--text-muted)] hover:text-indigo-400 transition-colors">
+                    <Mic size={16} />
                   </button>
                 </div>
               </div>
               <button
                 type="submit"
                 disabled={!input.trim()}
-                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white w-12 h-12 rounded-xl flex items-center justify-center transition-all shadow-lg shadow-indigo-500/20 shrink-0"
+                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg shadow-indigo-500/20 shrink-0"
               >
-                <Send size={18} />
+                <Send size={16} />
               </button>
             </form>
-            <div className="flex items-center justify-center gap-2 mt-3 opacity-40">
-              <ShieldCheck size={12} className="text-teal-500" />
-              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest">End-to-End Encrypted</span>
+            <div className="flex items-center justify-center gap-2 mt-2 opacity-40">
+              <ShieldCheck size={11} className="text-teal-500" />
+              <span className="text-[7px] font-black text-[var(--text-muted)] uppercase tracking-widest">End-to-End Encrypted</span>
             </div>
           </div>
         </div>

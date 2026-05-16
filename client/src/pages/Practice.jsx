@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Trophy, Target, Zap, Mic, CheckCircle2, 
   RotateCcw, Play, Pause, ChevronRight, Info, 
-  TrendingUp, ArrowRight, Square, Loader2, Sparkles
+  TrendingUp, ArrowRight, Square, Loader2, Sparkles, Undo2, PartyPopper
 } from 'lucide-react';
 import { sessionsService } from '../services/sessionsService';
 import { analyticsService } from '../services/analyticsService';
@@ -33,16 +33,23 @@ const ProgressCheckCard = ({ targetSound, onComplete }) => {
     };
     
     const passageId = passageMap[targetSound?.toUpperCase()] || 'screening';
-    sessionsService.getPassageById(passageId).then(res => setPassage(res.data.passage));
+    sessionsService.getPassageById(passageId)
+      .then(res => setPassage(res?.data?.passage))
+      .catch(err => console.error("Failed to load verification passage", err));
   }, [targetSound]);
 
   useEffect(() => {
     if (status === 'success' && analysisResults) {
       const newScore = analysisResults.fluencyScore || analysisResults.metrics?.fluencyScore || 0;
-      analyticsService.getSummary().then(res => {
-        const baseline = res.data.averageFluencyScore || 60;
-        setComparison({ current: newScore, previous: baseline, improvement: newScore - baseline });
-      });
+      analyticsService.getSummary()
+        .then(res => {
+          const baseline = res?.data?.averageFluencyScore || 60;
+          setComparison({ current: newScore, previous: baseline, improvement: newScore - baseline });
+        })
+        .catch(err => {
+          console.error("Baseline sync failed", err);
+          setComparison({ current: newScore, previous: 60, improvement: 0 });
+        });
     }
   }, [status, analysisResults]);
 
@@ -94,12 +101,76 @@ const ProgressCheckCard = ({ targetSound, onComplete }) => {
   );
 };
 
-const ExerciseCard = ({ exercise, onComplete, isInitiallyCompleted }) => {
+// ── Pronunciation Hints per sound ────────────────────────────────────────────
+const PRONUNCIATION_HINTS = {
+  S:  'Keep your tongue behind your teeth. Air flows over the center.',
+  SH: 'Round your lips slightly. Tongue tip near the roof of your mouth.',
+  TH: 'Place your tongue gently between your teeth and push air through.',
+  DH: 'Same as TH but vibrate your vocal cords.',
+  B:  'Press both lips together, then release with a burst of air.',
+  P:  'Like B but without vocal cords — a clean pop of air.',
+  T:  'Tongue tip touches the ridge behind your top teeth, then releases.',
+  D:  'Like T but voiced — your vocal cords should buzz.',
+  K:  'Back of your tongue touches the soft palate at the back.',
+  G:  'Like K but vibrate your throat.',
+  F:  'Upper teeth lightly touch your lower lip, blow steady air.',
+  V:  'Like F but vibrate your vocal cords.',
+  R:  'Curl your tongue back without touching the roof.',
+  L:  'Tongue tip touches the ridge behind your top teeth.',
+  STR:'Blend S→T→R smoothly: ssss-t-rrr without stopping.',
+  SP: 'S then P in one breath — no gap between them.',
+};
+
+// ── Highlight target sound in sentence ───────────────────────────────────────
+function HighlightedSentence({ text, sound }) {
+  if (!sound || !text) return <span>{text}</span>;
+  const regex = new RegExp(`(${sound})`, 'gi');
+  const parts = text.split(regex);
+  return (
+    <span>
+      {parts.map((part, i) =>
+        regex.test(part)
+          ? <mark key={i} className="bg-teal-400/20 text-teal-700 font-black rounded px-0.5 not-italic">{part}</mark>
+          : <span key={i}>{part}</span>
+      )}
+    </span>
+  );
+}
+
+const ExerciseCard = ({ exercise, onComplete, isInitiallyCompleted, isActive, onActivate }) => {
   const { status, duration, audioBlob, startRecording, stopRecording, startAnalysis, analysisResults, resetRecording, analyser } = useRecording();
   const [isCompleted, setIsCompleted] = useState(isInitiallyCompleted || false);
   const [score, setScore] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showHint, setShowHint] = useState(false);
+  const [recordingTimer, setRecordingTimer] = useState(0);
+  const timerRef = useRef(null);
   const audioRef = useRef(null);
+
+  // ── HCI: Spacebar shortcut to record/stop (only for the active card) ──
+  useEffect(() => {
+    if (!isActive || isCompleted) return;
+    const handleKey = (e) => {
+      if (e.code === 'Space' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+        e.preventDefault();
+        if (status === 'recording') stopRecording();
+        else if (status === 'idle') startRecording();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [isActive, isCompleted, status]);
+
+  // Live recording timer
+  useEffect(() => {
+    if (status === 'recording') {
+      setRecordingTimer(0);
+      timerRef.current = setInterval(() => setRecordingTimer(t => t + 1), 1000);
+    } else {
+      clearInterval(timerRef.current);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [status]);
 
   useEffect(() => {
     if (status === 'success' && analysisResults && !isCompleted) {
@@ -118,82 +189,178 @@ const ExerciseCard = ({ exercise, onComplete, isInitiallyCompleted }) => {
   }, [status, analysisResults]);
 
   const isRecording = status === 'recording' || status === 'permissions';
+  const hint = PRONUNCIATION_HINTS[exercise.tag?.toUpperCase()];
+  const scoreColor = score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-amber-400' : 'bg-rose-400';
+  const scoreLabel = score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : 'Keep Practicing';
 
   return (
     <div className={cn(
-      "relative p-6 rounded-3xl border transition-all duration-500 overflow-hidden group/card",
-      isCompleted ? "bg-[var(--accent)]/[0.03] border-[var(--accent)]/20 shadow-sm" : "bg-[var(--bg-surface)] border-[var(--border-subtle)] hover:border-[var(--accent)]/40 shadow-premium"
+      "relative rounded-2xl border transition-all duration-300 overflow-hidden",
+      isCompleted
+        ? "bg-[var(--accent)]/[0.03] border-[var(--accent)]/20"
+        : "bg-[var(--bg-surface)] border-[var(--border-subtle)] hover:border-[var(--accent)]/30 hover:shadow-md"
     )}>
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 relative z-10">
-        <div className="flex items-center gap-4">
-          <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs transition-all duration-500 border shadow-sm", isCompleted ? "bg-teal-700 text-white border-teal-700" : "bg-[var(--bg-base)] text-[var(--text-primary)] border-[var(--border-subtle)]")}>
-            {isCompleted ? <CheckCircle2 size={18} strokeWidth={3} /> : `0${exercise.num}`}
-          </div>
-          <div>
-            <h4 className="text-lg font-black font-syne tracking-tight text-[var(--text-primary)]">{exercise.title}</h4>
-            <div className="flex items-center gap-2 mt-2"><Badge variant="slate" size="sm">{exercise.tag}</Badge><Badge size="sm" variant={exercise.difficulty?.toLowerCase() === 'easy' ? 'success' : 'warning'}>{exercise.difficulty}</Badge></div>
-          </div>
+      {/* ── Top Row: Info ── */}
+      <div className="flex items-center gap-4 px-5 pt-3 pb-2">
+
+        {/* Number / Done Badge */}
+        <div className={cn(
+          "w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 border transition-all",
+          isCompleted ? "bg-teal-600 text-white border-teal-600" : "bg-[var(--bg-base)] text-[var(--text-primary)] border-[var(--border-subtle)]"
+        )}>
+          {isCompleted ? <CheckCircle2 size={17} strokeWidth={3} /> : `${String(exercise.num).padStart(2,'0')}`}
         </div>
-        {isCompleted && score !== null && <div className="text-[var(--accent)] font-black text-sm">Score: {score}/100 <Zap size={18} className="inline ml-1" /></div>}
-      </div>
-      <div className="bg-[var(--bg-base)] border border-[var(--border-subtle)] rounded-2xl p-4 mb-4">
-        <p className="text-base font-medium italic font-serif text-[var(--text-primary)]">"{exercise.text}"</p>
-      </div>
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => {
-              if (status === 'recording') stopRecording();
-              else if (status === 'reviewing') {
-                if (isPlaying) {
-                  audioRef.current.pause();
-                  setIsPlaying(false);
-                } else {
-                  const url = URL.createObjectURL(audioBlob);
-                  if (!audioRef.current) audioRef.current = new Audio(url);
-                  audioRef.current.play();
-                  setIsPlaying(true);
-                  audioRef.current.onended = () => setIsPlaying(false);
-                }
-              }
-              else startRecording();
-            }} 
-            disabled={isCompleted} 
-            className={cn("w-12 h-12 rounded-full flex items-center justify-center transition-all shrink-0 shadow-lg", 
-              isRecording ? "bg-red-500 text-white animate-pulse" : 
-              status === 'reviewing' ? "bg-[var(--accent)] text-white hover:scale-105" :
-              "bg-[var(--accent)] text-white hover:scale-105", 
-              isCompleted && "bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed"
+
+        {/* Title + badges + sentence */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className="text-base font-black font-syne tracking-tight text-[var(--text-primary)] truncate">{exercise.title}</h4>
+            <Badge variant="slate" size="sm">{exercise.tag}</Badge>
+            <Badge size="sm" variant={exercise.difficulty?.toLowerCase() === 'easy' ? 'success' : 'warning'}>{exercise.difficulty}</Badge>
+          </div>
+          <p className="text-sm font-medium italic text-[var(--text-secondary)] mt-1 leading-snug line-clamp-1">
+            "<HighlightedSentence text={exercise.text} sound={exercise.tag} />"
+          </p>
+        </div>
+
+        {/* Hint toggle (top right) */}
+        {hint && (
+          <button
+            onClick={() => setShowHint(v => !v)}
+            aria-label={showHint ? 'Hide pronunciation tip' : 'Show pronunciation tip'}
+            title="Pronunciation tip (HCI: contextual help)"
+            className={cn(
+              "w-9 h-9 rounded-lg flex items-center justify-center transition-all border shrink-0",
+              showHint
+                ? "bg-amber-400/10 border-amber-400/30 text-amber-500"
+                : "bg-[var(--bg-base)] border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-amber-500"
             )}
           >
-            {isRecording ? <Pause size={20} /> : 
-             status === 'reviewing' ? (isPlaying ? <Pause size={20} /> : <Play size={20} fill="currentColor" />) : 
-             <Mic size={20} />}
+            <Info size={14} />
           </button>
-
-          {(status === 'reviewing' || status === 'success') && (
-            <button 
-              onClick={resetRecording}
-              className="w-10 h-10 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)] flex items-center justify-center hover:text-amber-500 transition-all border border-[var(--border-subtle)]"
-              title="Re-record"
-            >
-              <RotateCcw size={18} />
-            </button>
-          )}
-        </div>
-
-        {status === 'recording' && (
-          <div className="flex-1 h-10 bg-[var(--bg-base)] rounded-xl border border-[var(--border-subtle)] flex items-center justify-center px-4 overflow-hidden">
-            <WaveformCanvas analyser={analyser} isRecording={true} color="var(--accent)" bars={30} />
-          </div>
-        )}
-
-        {!isCompleted && (
-           <button onClick={() => startAnalysis(null, exercise.text)} disabled={status !== 'reviewing'} className={cn("h-10 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all", status === 'reviewing' ? "bg-[var(--accent-navy)] text-white shadow-lg" : "bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed")}>
-              Analyze Speech <ChevronRight size={14} className="inline ml-2" />
-           </button>
         )}
       </div>
+
+      {/* ── Bottom Row: Actions ── */}
+      <div className="flex items-center gap-3 px-5 pb-3">
+
+        {/* Record / Stop / Play button — aria-label for accessibility */}
+        <button
+          onClick={() => {
+            onActivate?.();
+            if (status === 'recording') stopRecording();
+            else if (status === 'reviewing') {
+              if (isPlaying) { audioRef.current.pause(); setIsPlaying(false); }
+              else {
+                const url = URL.createObjectURL(audioBlob);
+                if (!audioRef.current) audioRef.current = new Audio(url);
+                audioRef.current.play(); setIsPlaying(true);
+                audioRef.current.onended = () => setIsPlaying(false);
+              }
+            } else startRecording();
+          }}
+          disabled={isCompleted}
+          aria-label={
+            isRecording ? 'Stop recording' :
+            status === 'reviewing' ? (isPlaying ? 'Pause playback' : 'Play recording') :
+            `Record exercise ${exercise.num} — press Space to toggle`
+          }
+          className={cn(
+            "w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-md shrink-0",
+            isRecording ? "bg-red-500 text-white animate-pulse" :
+            status === 'reviewing' ? "bg-[var(--accent)] text-white hover:scale-105" :
+            "bg-[var(--accent)] text-white hover:scale-105",
+            isCompleted && "bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed opacity-50"
+          )}
+        >
+          {isRecording ? <Square size={16} fill="currentColor" /> :
+           status === 'reviewing' ? (isPlaying ? <Pause size={16} /> : <Play size={16} fill="currentColor" />) :
+           <Mic size={16} />}
+        </button>
+
+        {/* Re-record — aria-label for accessibility */}
+        {status === 'reviewing' && !isCompleted && (
+          <button
+            onClick={resetRecording}
+            aria-label="Re-record this exercise"
+            className="w-9 h-9 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-muted)] hover:text-amber-500 transition-all"
+            title="Re-record"
+          >
+            <RotateCcw size={15} />
+          </button>
+        )}
+
+        {/* Live waveform + timer */}
+        {status === 'recording' && (
+          <>
+            <div className="flex-1 h-9 bg-[var(--bg-base)] rounded-xl border border-[var(--border-subtle)] overflow-hidden px-3 flex items-center">
+              <WaveformCanvas analyser={analyser} isRecording={true} color="var(--accent)" bars={28} />
+            </div>
+            <span className="text-[11px] font-black text-red-500 tabular-nums shrink-0">
+              {String(Math.floor(recordingTimer / 60)).padStart(2,'0')}:{String(recordingTimer % 60).padStart(2,'0')}
+            </span>
+          </>
+        )}
+
+        {/* Spacer when not recording */}
+        {status !== 'recording' && <div className="flex-1" />}
+
+        {/* Analyze button — aria-label for accessibility */}
+        {!isCompleted && (
+          <button
+            onClick={() => startAnalysis(null, exercise.text)}
+            disabled={status !== 'reviewing'}
+            aria-label="Analyze recorded speech"
+            className={cn(
+              "h-8 px-5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap",
+              status === 'reviewing'
+                ? "bg-[var(--accent-navy)] text-white shadow-sm hover:bg-[var(--accent)]"
+                : "bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed opacity-50"
+            )}
+          >
+            {status === 'analysing' ? <Loader2 size={13} className="animate-spin inline" /> : <>Analyze Speech <ChevronRight size={13} className="inline ml-1" /></>}
+          </button>
+        )}
+      </div>
+
+
+
+
+      {/* ── Score Bar (on completion) ── */}
+      {isCompleted && score !== null && (
+        <div className="px-5 pb-4">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">{scoreLabel}</span>
+            <span className="text-[11px] font-black text-[var(--text-primary)]">{score}/100</span>
+          </div>
+          <div className="h-1.5 bg-[var(--bg-base)] rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${score}%` }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className={`h-full rounded-full ${scoreColor}`}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Pronunciation Hint Panel ── */}
+      <AnimatePresence>
+        {showHint && hint && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden border-t border-amber-400/20"
+          >
+            <div className="px-5 py-3 bg-amber-400/5 flex items-start gap-2">
+              <Info size={13} className="text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-[12px] font-medium text-amber-700 leading-snug">{hint}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -207,50 +374,65 @@ const Practice = () => {
   const [topWeakSound, setTopWeakSound] = useState(null);
   const [userWeakSounds, setUserWeakSounds] = useState([]);
   const [noWeakSounds, setNoWeakSounds] = useState(false);
+  // HCI: Undo stack & active card tracking & celebration
+  const [undoStack, setUndoStack] = useState([]);
+  const [activeCardId, setActiveCardId] = useState(null);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const loadPracticeData = async () => {
     setLoading(true);
     setNoWeakSounds(false);
     try {
       // Step 1: Get user's detected weak sounds from analytics (recordings)
-      const summaryRes = await analyticsService.getSummary();
-      const detectedWeakSounds = (summaryRes.data?.topWeakSounds || []).map(ws => ws.sound);
+      const summaryRes = await analyticsService.getSummary().catch(() => ({ data: {} }));
+      const detectedWeakSounds = (summaryRes?.data?.topWeakSounds || [])
+        .map(ws => ws?.sound)
+        .filter(Boolean);
+      
       setUserWeakSounds(detectedWeakSounds);
 
       if (detectedWeakSounds.length === 0) {
-        console.log('No weak sounds in profile — server will use session or default fallback');
+        console.log('No weak sounds in profile — server will use fallback');
       }
 
       if (detectedWeakSounds.length > 0) setTopWeakSound(detectedWeakSounds[0]);
 
       // Step 2: Generate exercises targeting those exact weak sounds
       const [exercisesRes, progressRes, todayResultsRes] = await Promise.all([
-        practiceService.generateExercises(difficulty, detectedWeakSounds),
-        practiceService.getSoundProgress(),
-        practiceService.getResults({ limit: 50 }) // Get recent results to find today's progress
+        practiceService.generateExercises(difficulty, detectedWeakSounds).catch(() => ({ data: { exercises: [] } })),
+        practiceService.getSoundProgress().catch(() => ({ data: { soundProgress: [] } })),
+        practiceService.getResults({ limit: 50 }).catch(() => ({ data: { results: [] } }))
       ]);
 
-      setExercises(exercisesRes.data.exercises || []);
+      const exerciseList = exercisesRes?.data?.exercises || [];
+      setExercises(exerciseList);
 
       // Step 3: Set completed IDs based on today's results
       const today = new Date().toDateString();
-      const todayCompleted = (todayResultsRes.data.results || [])
-        .filter(r => new Date(r.createdAt).toDateString() === today)
-        .map(r => r.targetSentence);
+      const todayCompleted = (todayResultsRes?.data?.results || [])
+        .filter(r => r && r.createdAt && new Date(r.createdAt).toDateString() === today)
+        .map(r => r.targetSentence)
+        .filter(Boolean);
+      
       setCompletedIds(todayCompleted);
 
       // Step 4: Build Mastery Tracker using ALL practice history
-      const practiceHistory = progressRes.data.soundProgress || [];
+      const practiceHistory = progressRes?.data?.soundProgress || [];
       const allSoundsToTrack = Array.from(new Set([
-        ...practiceHistory.map(p => p.sound?.toUpperCase()),
+        ...practiceHistory.map(p => p?.sound?.toUpperCase()),
         ...detectedWeakSounds.map(s => s?.toUpperCase())
       ])).filter(Boolean);
 
-      const mergedProgress = allSoundsToTrack.map(sound => {
-        const history = practiceHistory.find(p => p.sound?.toUpperCase() === sound);
+      const mergedProgress = allSoundsToTrack.map((sound, idx) => {
+        const history = practiceHistory.find(p => {
+          const pSound = (p?.sound || p?._id || "").toString().toUpperCase();
+          return pSound === sound;
+        });
+        
         return {
+          id: `mastery-${sound}-${idx}`,
           sound,
-          averageScore: history?.averageScore || 0,
+          averageScore: Math.max(0, Math.min(100, history?.averageScore || 0)),
           bestScore: history?.bestScore || 0,
           totalAttempts: history?.totalAttempts || 0,
           lastAttempt: history?.lastAttempt || null,
@@ -260,7 +442,7 @@ const Practice = () => {
       setSoundProgress(mergedProgress);
 
     } catch (err) {
-      console.error("Failed to load practice data", err);
+      console.error("Critical Practice Data Load Error:", err);
       if (err.response?.status === 400) setNoWeakSounds(true);
     } finally {
       setLoading(false);
@@ -282,16 +464,82 @@ const Practice = () => {
   const totalExercises = exercises.length || 5;
   const showVerification = completedCount >= totalExercises && totalExercises > 0 && !completedIds.includes('verification-done');
   
-  const handleComplete = (id) => { 
+  const handleComplete = (id) => {
     if (!completedIds.includes(id)) {
-      setCompletedIds(prev => [...prev, id]);
-      // Refresh mastery tracker and stats after a few seconds to let DB settle
+      setUndoStack(prev => [...prev, id]); // HCI: push to undo stack
+      setCompletedIds(prev => {
+        const next = [...prev, id];
+        // HCI: Show celebration when all exercises are done
+        if (next.filter(x => x !== 'verification-done').length >= exercises.length && exercises.length > 0) {
+          setTimeout(() => setShowCelebration(true), 600);
+        }
+        return next;
+      });
       setTimeout(() => loadPracticeData(), 1500);
-    } 
+    }
+  };
+
+  // HCI: Undo last completed exercise
+  const handleUndo = () => {
+    if (undoStack.length === 0) return;
+    const last = undoStack[undoStack.length - 1];
+    setUndoStack(prev => prev.slice(0, -1));
+    setCompletedIds(prev => prev.filter(id => id !== last));
+    setShowCelebration(false);
   };
 
   return (
     <div className="animate-fade-in-up min-h-screen relative pb-20">
+
+      {/* ── HCI: Session Completion Celebration Overlay ── */}
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowCelebration(false)}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
+              className="bg-[var(--bg-surface)] rounded-[32px] p-10 text-center max-w-sm mx-4 shadow-2xl border border-[var(--border-subtle)]"
+              onClick={e => e.stopPropagation()}
+            >
+              <motion.div
+                animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
+                transition={{ delay: 0.3, duration: 0.6 }}
+                className="text-5xl mb-4"
+              >
+                🎉
+              </motion.div>
+              <h2 className="text-2xl font-black text-[var(--text-primary)] font-syne tracking-tight mb-2">Session Complete!</h2>
+              <p className="text-sm font-medium text-[var(--text-secondary)] mb-6">
+                You've finished all <span className="font-black text-[var(--accent)]">{totalExercises}</span> exercises for today. Great work!
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => setShowCelebration(false)}
+                  className="h-11 px-8 rounded-xl bg-[var(--accent)] text-white font-black text-sm uppercase tracking-widest hover:bg-teal-700 transition-all"
+                  aria-label="Close celebration and return to practice"
+                >
+                  Continue Reviewing
+                </button>
+                <button
+                  onClick={() => { setShowCelebration(false); handleUndo(); }}
+                  className="h-9 px-8 rounded-xl bg-[var(--bg-base)] border border-[var(--border-subtle)] text-[var(--text-muted)] font-black text-xs uppercase tracking-widest hover:text-[var(--text-primary)] transition-all flex items-center justify-center gap-2"
+                  aria-label="Undo last completed exercise"
+                >
+                  <Undo2 size={13} /> Undo Last
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="relative mb-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
@@ -307,14 +555,27 @@ const Practice = () => {
               <p className="text-[var(--text-secondary)] font-medium mt-1 text-sm">Complete a recording session to unlock personalized exercises</p>
             )}
           </div>
-          <div className="flex items-center gap-5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-3 shadow-sm">
-            <div className="text-center px-1">
-              <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-1">Daily Progress</p>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl font-black text-[var(--text-primary)] tracking-tighter">{completedCount}/{totalExercises}</span>
+          <div className="flex items-center gap-3">
+            {/* HCI: Undo last exercise button */}
+            {undoStack.length > 0 && (
+              <button
+                onClick={handleUndo}
+                aria-label="Undo last completed exercise"
+                title="Undo last exercise"
+                className="flex items-center gap-2 h-10 px-4 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-amber-500 hover:border-amber-400/30 transition-all text-[10px] font-black uppercase tracking-widest"
+              >
+                <Undo2 size={14} /> Undo
+              </button>
+            )}
+            <div className="flex items-center gap-5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-3 shadow-sm">
+              <div className="text-center px-1">
+                <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-1">Daily Progress</p>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl font-black text-[var(--text-primary)] tracking-tighter">{completedCount}/{totalExercises}</span>
+                </div>
               </div>
+              <div className="w-10 h-10 bg-[var(--accent-glow)] rounded-xl flex items-center justify-center text-[var(--accent)]" aria-hidden="true"><Trophy size={20} /></div>
             </div>
-            <div className="w-10 h-10 bg-[var(--accent-glow)] rounded-xl flex items-center justify-center text-[var(--accent)]"><Trophy size={20} /></div>
           </div>
         </div>
       </div>
@@ -337,16 +598,18 @@ const Practice = () => {
           ) : (
             <AnimatePresence mode="popLayout">
               {showVerification ? (
-                <motion.div key="verification" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
+                <motion.div key="verification-mode" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
                   <ProgressCheckCard targetSound={topWeakSound} onComplete={() => setCompletedIds(prev => [...prev, 'verification-done'])} />
                 </motion.div>
               ) : (
                 exercises.map((ex, index) => (
-                  <motion.div key={ex.sentence} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
+                  <motion.div key={`exercise-${index}-${ex?.sentence?.slice(0,10)}`} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
                     <ExerciseCard
-                      exercise={{ id: ex.sentence, num: index+1, title: `${ex.targetSound} Focus`, tag: ex.soundLabel || ex.targetSound, difficulty: ex.difficulty || 'Medium', text: ex.sentence }}
+                      exercise={{ id: ex.sentence || `idx-${index}`, num: index+1, title: `${ex.targetSound} Focus`, tag: ex.soundLabel || ex.targetSound, difficulty: ex.difficulty || 'Medium', text: ex.sentence || 'No text available' }}
                       onComplete={handleComplete}
                       isInitiallyCompleted={completedIds.includes(ex.sentence)}
+                      isActive={activeCardId === (ex.sentence || `idx-${index}`)}
+                      onActivate={() => setActiveCardId(ex.sentence || `idx-${index}`)}
                     />
                   </motion.div>
                 ))
@@ -362,7 +625,7 @@ const Practice = () => {
         </div>
 
         {/* Sidebar */}
-        <div className="lg:sticky lg:top-24 space-y-6">
+        <div className="lg:sticky lg:top-24 self-start space-y-6">
           {/* Today's Focus */}
           <Card className="bg-[var(--accent-navy)] text-white border-none p-5">
             <h3 className="font-black text-base mb-3 flex items-center gap-2 font-syne uppercase tracking-tight"><Target size={18} /> Today's Focus</h3>
@@ -382,10 +645,11 @@ const Practice = () => {
               <p className="text-xs text-[var(--text-muted)] font-medium text-center py-4 opacity-60">Complete exercises to start tracking your progress per sound.</p>
             ) : (
               <div className="space-y-4">
-                {soundProgress.map(sp => {
+                {soundProgress.map((sp, idx) => {
                   const mastery = getMasteryLevel(sp.averageScore);
+                  const uniqueKey = sp.id || `sp-${sp.sound}-${idx}`;
                   return (
-                    <div key={sp.sound} className="p-3 bg-[var(--bg-base)] rounded-2xl border border-[var(--border-subtle)]">
+                    <div key={uniqueKey} className="p-3 bg-[var(--bg-base)] rounded-2xl border border-[var(--border-subtle)]">
                       <div className="flex justify-between items-center mb-2">
                         <div className="flex items-center gap-2">
                           <span className="w-7 h-7 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center justify-center text-[10px] font-black text-[var(--text-primary)]">{sp.sound}</span>
