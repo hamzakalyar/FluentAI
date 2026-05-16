@@ -58,10 +58,30 @@ router.post('/generate', auth, async (req, res) => {
       weakSounds = userWeakSounds.map(ws => ws.sound);
     }
 
+    // Fallback 1: Scan recent sessions for weakSoundsDetected
     if (!weakSounds || weakSounds.length === 0) {
-      return res.status(400).json({
-        message: 'No weak sounds available. Please complete a speech analysis session first to identify your weak sounds.'
-      });
+      const Session = require('../models/Session');
+      const recentSessions = await Session.find({ user: req.user._id, status: 'completed' })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .select('weakSoundsDetected');
+      
+      const soundMap = {};
+      for (const s of recentSessions) {
+        for (const ws of (s.weakSoundsDetected || [])) {
+          if (ws.sound) soundMap[ws.sound] = (soundMap[ws.sound] || 0) + (ws.frequency || 1);
+        }
+      }
+      weakSounds = Object.entries(soundMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([sound]) => sound);
+    }
+
+    // Fallback 2: Use common default sounds so the page is never empty
+    if (!weakSounds || weakSounds.length === 0) {
+      weakSounds = ['P', 'S', 'R', 'TH'];
+      console.log('⚠️  No weak sounds found — using default practice sounds:', weakSounds);
     }
 
     // Default values

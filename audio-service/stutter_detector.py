@@ -97,42 +97,81 @@ def detect_pauses(audio_path, min_pause_duration=0.3, silence_threshold=25):
 
 
 def detect_audio_level_repetitions(audio_path):
+    """
+    Detect phoneme and word-level repetition stutters directly from raw audio.
+
+    Handles BOTH:
+      - Plosive bursts:  p-p-p-peter, b-b-b-ball  (very short, 50-200ms each)
+      - Vowel repeats:   I-I-I, a-a-a              (longer, 200-500ms each)
+
+    WHY ONSET DETECTION instead of silence-splitting:
+      librosa.effects.split only finds segments separated by silence.
+      The old code required segments to be < 400ms — meaning 'I' (400-600ms)
+      BROKE the cluster loop. Onset detection finds the START of every sound
+      event regardless of how long it lasts, which is exactly what we need.
+    """
     try:
         audio, sr = librosa.load(audio_path, sr=16000)
-        intervals = librosa.effects.split(audio, top_db=25)
-        if len(intervals) < 2:
+
+        if len(audio) == 0:
             return {"count": 0, "repetitions": []}
-        
+
+        # onset_detect finds the beginning of each new sound event
+        # delta=0.05 → sensitive enough to catch quiet plosives
+        # units='time' → returns onset times in seconds directly
+        onset_times = librosa.onset.onset_detect(
+            y=audio,
+            sr=sr,
+            units='time',
+            delta=0.05,
+            wait=3           # minimum ~6ms between detected onsets
+        )
+
+        if len(onset_times) < 2:
+            return {"count": 0, "repetitions": []}
+
         repetitions = []
-        segments = []
-        for start, end in intervals:
-            duration_ms = (end - start) / sr * 1000
-            segments.append({"start": start, "end": end, "position": start / sr, "duration_ms": duration_ms})
-        
         i = 0
-        while i < len(segments):
-            cluster = []
-            j = i
-            while j < len(segments):
-                if segments[j]["duration_ms"] < 400:
-                    cluster.append(segments[j])
+
+        while i < len(onset_times):
+            j = i + 1
+
+            # Grow a cluster while consecutive onsets are within 550ms
+            # 550ms covers: fast plosive bursts (50-200ms gap) AND
+            # stuttered word repeats like I-I-I (200-500ms gap)
+            while j < len(onset_times):
+                gap_ms = (onset_times[j] - onset_times[j - 1]) * 1000
+                if gap_ms < 550:
                     j += 1
-                    if j < len(segments) and (segments[j]["start"] - segments[j-1]["end"]) / sr * 1000 > 300:
-                        break
-                else: break
-            
-            if len(cluster) >= 3:
-                repetitions.append({
-                    "type": "sound_repetition",
-                    "position": round(cluster[0]["position"], 2),
-                    "burst_count": len(cluster),
-                    "details": f"Detected {len(cluster)} rapid speech bursts"
-                })
+                else:
+                    break
+
+            cluster_size = j - i
+
+            if cluster_size >= 2:
+                cluster_times = onset_times[i:j]
+                total_ms = (cluster_times[-1] - cluster_times[0]) * 1000
+                avg_gap_ms = total_ms / (len(cluster_times) - 1) if len(cluster_times) > 1 else 0
+
+                # Guard: average gap must be < 450ms
+                # This prevents flagging rapid but NORMAL fluent speech
+                if avg_gap_ms < 450:
+                    # Classify: phoneme burst (< 250ms avg) vs word repetition
+                    stutter_subtype = "phoneme burst" if avg_gap_ms < 250 else "word repetition"
+                    repetitions.append({
+                        "type": "sound_repetition",
+                        "position": round(float(cluster_times[0]), 2),
+                        "burst_count": cluster_size,
+                        "details": f"{cluster_size}x {stutter_subtype} (avg gap {avg_gap_ms:.0f}ms)"
+                    })
                 i = j
-            else: i += 1
-        
+            else:
+                i += 1
+
         return {"count": len(repetitions), "repetitions": repetitions}
+
     except Exception as e:
+        print(f"❌ Audio-level repetition detection error: {e}")
         return {"count": 0, "repetitions": []}
 
 
@@ -174,11 +213,28 @@ def merge_transcript_and_stutters(whisper_words, stutters):
 
 def calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rate_data, audio_repetition_data=None, advanced_stutters=None):
     score = 100.0
+    
+    # Basic penalties
     score -= repetition_data["count"] * 8
-    score -= pause_data["count"] * 5
-    score -= filler_data["count"] * 3
-    if speech_rate_data["wpm"] > 0 and speech_rate_data["wpm"] < 100:
-        score -= (100 - speech_rate_data["wpm"]) / 5
+    score -= pause_data["count"] * 4
+    score -= filler_data["count"] * 2
+    
+    # Advanced AI penalties (Blocks, Prolongations, etc.)
+    if advanced_stutters:
+        for s in advanced_stutters:
+            if s["type"] in ["block", "prolongation"]:
+                score -= 10
+            elif s["type"] in ["replace", "missing"]:
+                score -= 5
+    
+    # Speech rate penalty (Too slow or too fast)
+    wpm = speech_rate_data["wpm"]
+    if wpm > 0:
+        if wpm < 100:
+            score -= (100 - wpm) / 4  # Penalty for very slow speech
+        elif wpm > 180:
+            score -= (wpm - 180) / 5  # Penalty for rushed speech
+            
     return round(max(0, min(100, score)), 1)
 
 
@@ -207,6 +263,9 @@ def analyze_audio(audio_path, transcript_data):
     
     fluency_score = calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rate_data, audio_rep_data, advanced_stutters)
     
+    # Count advanced stutters for the summary
+    advanced_count = len(advanced_stutters) if advanced_stutters else 0
+    
     return {
         "fluencyScore": fluency_score,
         "speechRateWPM": speech_rate_data["wpm"],
@@ -214,6 +273,7 @@ def analyze_audio(audio_path, transcript_data):
         "repetitionCount": max(repetition_data["count"], len([s for s in advanced_stutters if s["type"] == "repetition"]) if advanced_stutters else 0),
         "pauseCount": pause_data["count"],
         "fillerCount": filler_data["count"],
+        "advancedStutterCount": len([s for s in (advanced_stutters or []) if s["type"] not in ["repetition"]]),
         "repetitions": [{"word": r["word"], "times": r["times"], "position": r["position"]} for r in repetition_data["repetitions"]],
         "pauses": pause_data["pauses"],
         "fillers": filler_data["fillers"],

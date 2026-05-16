@@ -399,6 +399,7 @@ def get_all_passages():
             "difficulty": passage["difficulty"],
             "estimatedDuration": passage["estimatedDuration"],
             "targetSounds": passage["targetSounds"],
+            "text": passage["text"],
             "wordCount": passage["wordCount"]
         })
     return passages

@@ -11,15 +11,15 @@ echo Starting all services...
 echo.
 
 REM Terminal 1: Backend (Node.js/Express)
-echo [1/3] Starting Backend Service (Express)...
-start "Backend Service" cmd /k "cd server && npm start"
+echo [1/3] Starting Backend Service (Express + Nodemon)...
+start "Backend Service" cmd /k "cd server && npm run dev"
 
 REM Give backend time to start
 timeout /t 2 > nul
 
 REM Terminal 2: Python Service (Flask)
-echo [2/3] Starting Python Audio Service (Flask)...
-start "Python Audio Service" cmd /k "cd audio-service && python app.py"
+echo [2/3] Starting Python Audio Service (Flask + Venv)...
+start "Python Audio Service" cmd /k "cd audio-service && .\venv\Scripts\python.exe app.py"
 
 REM Give Python service time to start
 timeout /t 3 > nul

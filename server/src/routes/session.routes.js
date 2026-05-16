@@ -317,11 +317,36 @@ router.get('/stats/summary', auth, async (req, res) => {
       .sort((a, b) => b.frequency - a.frequency)
       .slice(0, 5);
 
+    // Calculate specific trends for dashboard cards
+    const trends = {
+      sessions: sessions.length > 0 ? sessions.length : 0,
+      wpm: 0,
+      repetitions: 0
+    };
+
+    if (sessions.length >= 2) {
+      // Compare latest session vs previous or average of recent vs older
+      const recentCount = Math.min(3, Math.ceil(sessions.length / 2));
+      const recentSessions = sessions.slice(0, recentCount);
+      const olderSessions = sessions.slice(recentCount, recentCount * 2);
+
+      if (olderSessions.length > 0) {
+        const recentWpm = recentSessions.reduce((sum, s) => sum + (s.metrics?.speechRateWPM || 0), 0) / recentSessions.length;
+        const olderWpm = olderSessions.reduce((sum, s) => sum + (s.metrics?.speechRateWPM || 0), 0) / olderSessions.length;
+        if (olderWpm > 0) trends.wpm = Math.round(((recentWpm - olderWpm) / olderWpm) * 100);
+
+        const recentRep = recentSessions.reduce((sum, s) => sum + (s.metrics?.repetitionCount || 0), 0) / recentSessions.length;
+        const olderRep = olderSessions.reduce((sum, s) => sum + (s.metrics?.repetitionCount || 0), 0) / olderSessions.length;
+        if (olderRep > 0) trends.repetitions = Math.round(((recentRep - olderRep) / olderRep) * 100);
+      }
+    }
+
     res.json({
       totalSessions: sessions.length,
       averageFluencyScore: avgScore,
       latestFluencyScore: sessions[0]?.metrics?.fluencyScore || 0,
       improvementTrend,
+      trends,
       topWeakSounds,
       recentSessions: sessions.slice(0, 5).map(s => ({
         id: s._id,

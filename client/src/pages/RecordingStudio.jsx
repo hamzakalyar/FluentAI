@@ -150,15 +150,31 @@ const RecordingStudio = () => {
                   ))}
                </div>
 
-               <div className="bg-white rounded-[20px] p-3 shadow-sm border border-[var(--border-subtle)] relative shrink-0">
-                  <div className="flex items-center justify-between mb-1.5 border-b border-[var(--border-subtle)] pb-1.5">
-                     <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full bg-teal-50 flex items-center justify-center text-teal-600">
-                           <Target size={10} />
+               {isFreeRecord ? (
+                  /* FREE RECORD MODE — no script, no passage, just record freely */
+                  <div className="bg-white rounded-[24px] p-4 shadow-sm border border-[var(--border-subtle)] relative flex-1 flex flex-col min-h-0 items-center justify-center">
+                     <div className="flex flex-col items-center gap-3 text-center px-8">
+                        <div className="w-12 h-12 rounded-full bg-teal-50 flex items-center justify-center text-teal-500">
+                           <Mic size={22} />
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-800">ACTIVE PRACTICE</span>
+                        <p className="text-[15px] font-semibold text-slate-600 leading-relaxed">
+                           Speak freely — talk about anything you like.
+                        </p>
+                        <p className="text-[11px] text-slate-400 font-medium">
+                           Your fluency, speech rate, and stutters will be analyzed without comparing to any script.
+                        </p>
                      </div>
-                     {!isFreeRecord && (
+                  </div>
+               ) : (
+                  /* DAILY ROUTINE MODE — passage reading with script */
+                  <div className="bg-white rounded-[24px] p-4 shadow-sm border border-[var(--border-subtle)] relative flex-1 flex flex-col min-h-0">
+                     <div className="flex items-center justify-between mb-1.5 border-b border-[var(--border-subtle)] pb-1.5">
+                        <div className="flex items-center gap-2">
+                           <div className="w-5 h-5 rounded-full bg-teal-50 flex items-center justify-center text-teal-600">
+                              <Target size={10} />
+                           </div>
+                           <span className="text-[10px] font-black uppercase tracking-widest text-slate-800">ACTIVE PRACTICE</span>
+                        </div>
                         <select 
                            value={activePassageIndex} 
                            onChange={(e) => setActivePassageIndex(Number(e.target.value))}
@@ -169,14 +185,14 @@ const RecordingStudio = () => {
                               <option key={p.id} value={idx}>{p.title || `P${idx + 1}`}</option>
                            ))}
                         </select>
-                     )}
+                     </div>
+                     <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar py-6 px-8">
+                        <p className="text-[16px] sm:text-[18px] font-medium text-[var(--text-secondary)] leading-relaxed font-serif italic text-center">"{currentPassageText}"</p>
+                     </div>
                   </div>
-                  <div className="h-12 overflow-y-auto pr-2 custom-scrollbar py-0.5">
-                     <p className="text-[14px] sm:text-[15px] font-medium text-[var(--text-secondary)] leading-snug font-serif italic text-center px-4">"{currentPassageText}"</p>
-                  </div>
-               </div>
+               )}
 
-               <div className="bg-[#0B1120] rounded-[20px] shadow-2xl p-3 flex-1 flex flex-col relative overflow-hidden min-h-0 text-white">
+               <div className="bg-[#0B1120] rounded-[24px] shadow-2xl p-4 flex-1 flex flex-col relative overflow-hidden min-h-0 text-white">
                   <div className="flex justify-between items-center px-1 mb-0.5 shrink-0">
                      <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 bg-teal-400 rounded-full" />
@@ -237,7 +253,8 @@ const RecordingStudio = () => {
                            </div>
                         </div>
                         <div className="flex flex-col gap-2 w-full max-w-[240px] shrink-0">
-                           <button onClick={() => startAnalysis(isFreeRecord ? undefined : activePassage?.id, activePassage?.text)} className="h-10 bg-teal-500 text-white rounded-xl font-bold text-[12px] flex items-center gap-2 justify-center shadow-lg">START ANALYSIS <ArrowRight size={16} /></button>
+                           {/* Free Record: no passageId, no expectedText → pure fluency analysis, no script comparison */}
+                           <button onClick={() => startAnalysis(isFreeRecord ? null : activePassage?.id, isFreeRecord ? null : activePassage?.text)} className="h-10 bg-teal-500 text-white rounded-xl font-bold text-[12px] flex items-center gap-2 justify-center shadow-lg">START ANALYSIS <ArrowRight size={16} /></button>
                            <button onClick={() => setShowReRecordModal(true)} className="h-8 border border-red-500/20 text-red-400 rounded-xl font-bold text-[9px] uppercase tracking-widest flex items-center justify-center gap-2">
                               <RotateCcw size={12} /> RE-RECORD
                            </button>

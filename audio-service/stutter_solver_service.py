@@ -5,8 +5,13 @@ from torch import nn
 import librosa
 import re
 
+# SILENCE VERBOSE LOGS BEFORE IMPORTS
+os.environ["NUMBA_LOG_LEVEL"] = "ERROR"
+os.environ["KMP_WARNINGS"] = "0" # Silence Intel MKL warnings
+
 # Add stutter-solver to path so utils can be imported
 current_dir = os.path.dirname(os.path.abspath(__file__))
+# Note: The repo structure is Stutter-Solver/stutter-solver/
 stutter_solver_dir = os.path.join(current_dir, "Stutter-Solver", "stutter-solver")
 if stutter_solver_dir not in sys.path:
     sys.path.append(stutter_solver_dir)
@@ -82,24 +87,43 @@ def load_stutter_solver_models():
     if _net_g is not None and _decoder is not None:
         return
     
-    print("Loading Stutter-Solver models into memory...")
+    # Corrected paths based on your folder structure
     config_path = os.path.join(stutter_solver_dir, "utils", "vits", "configs", "ljs_base.json")
-    _hps = utils.get_hparams_from_file(config_path)
-    
-    _net_g = SynthesizerTrn(
-        len(symbols),
-        _hps.data.filter_length // 2 + 1,
-        _hps.train.segment_size // _hps.data.hop_length,
-        **_hps.model).to(device)
-    _net_g.eval()
-    
-    pretrained_path = os.path.join(current_dir, "Stutter-Solver", "saved_models", "pretrained_ljs.pth")
-    utils.load_checkpoint(pretrained_path, _net_g, None)
-    
-    decoder_path = os.path.join(current_dir, "Stutter-Solver", "saved_models", "stutter_solver.pth")
-    _decoder = _torch_load_checkpoint(decoder_path, map_location=device)
-    _decoder.eval()
-    print("Stutter-Solver models loaded successfully.")
+    model_root = os.path.join(current_dir, "Stutter-Solver", "saved_models")
+    pretrained_path = os.path.join(model_root, "pretrained_ljs.pth")
+    decoder_path = os.path.join(model_root, "stutter_solver.pth")
+
+    # Debug: Print exact paths being checked (will only show once)
+    if not os.path.exists(config_path):
+        print(f"⚠️  Missing config: {config_path}")
+    if not os.path.exists(pretrained_path):
+        print(f"⚠️  Missing pretrained: {pretrained_path}")
+
+    # SAFETY CHECK: If models are missing, don't crash
+    if not os.path.exists(config_path) or not os.path.exists(pretrained_path) or not os.path.exists(decoder_path):
+        print("⚠️  WARNING: Advanced AI models not found at the expected paths. Falling back to basic detection.")
+        return
+
+    try:
+        print("Loading Stutter-Solver models into memory...")
+        _hps = utils.get_hparams_from_file(config_path)
+        
+        _net_g = SynthesizerTrn(
+            len(symbols),
+            _hps.data.filter_length // 2 + 1,
+            _hps.train.segment_size // _hps.data.hop_length,
+            **_hps.model).to(device)
+        _net_g.eval()
+        
+        utils.load_checkpoint(pretrained_path, _net_g, None)
+        
+        _decoder = _torch_load_checkpoint(decoder_path, map_location=device)
+        _decoder.eval()
+        print("✅ Stutter-Solver models loaded successfully.")
+    except Exception as e:
+        print(f"⚠️  ERROR loading models: {e}. Falling back to basic detection.")
+        _net_g = None
+        _decoder = None
 
 def get_text(text, hps):
     text = _sanitize_text_for_vits(text)
@@ -143,6 +167,10 @@ def predict_stutters(audio_path, transcript_text):
     """
     load_stutter_solver_models()
     
+    # If models failed to load, return empty results instead of crashing
+    if _net_g is None or _decoder is None or _hps is None:
+        return []
+
     if not transcript_text.strip():
         return []
         

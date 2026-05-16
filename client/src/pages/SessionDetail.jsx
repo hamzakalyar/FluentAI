@@ -79,7 +79,7 @@ const SessionDetail = () => {
   }
 
   const m = session.metrics || {};
-  const tokens = session.analysis?.tokens || [];
+  const tokens = session.transcript?.words || [];
   const stutters = session.analysis?.stutters || session.metrics?.detectedStutters || [];
   const comparison = session.analysis?.comparison || session.assessmentComparison;
   const nlp = session.analysis?.nlp || session.nlpAnalysis || {};
@@ -123,7 +123,22 @@ const SessionDetail = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" className="border-[var(--border-subtle)]"><Share2 size={16} className="mr-2" /> Share</Button>
+          {session.audioUrl && (
+             <Button 
+                variant="ghost" 
+                size="sm" 
+                className="border-[var(--border-subtle)] text-[var(--accent)] hover:bg-[var(--accent-glow)]"
+                onClick={() => {
+                  const audio = document.getElementById('session-audio');
+                  if (audio) {
+                    audio.currentTime = 0;
+                    audio.play();
+                  }
+                }}
+             >
+               <Play size={16} className="mr-2" fill="currentColor" /> Replay Session
+             </Button>
+          )}
           <Button variant="ghost" size="sm" className="border-[var(--border-subtle)]"><Download size={16} className="mr-2" /> Export</Button>
         </div>
       </div>
@@ -162,18 +177,106 @@ const SessionDetail = () => {
               <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2"><FileText size={16} /> Transcript Analysis</h3>
               <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent-glow)] px-2 py-1 rounded-lg uppercase tracking-widest">AI Analyzed</span>
             </div>
-            <div className="p-6">
-              <div className="text-base text-[var(--text-primary)] leading-[2] font-medium whitespace-pre-wrap">
-                {(session.transcript?.text || session.transcript || '').split(' ').map((word, i) => {
-                   const cleanWord = word.replace(/[^\w]/g, '').toLowerCase();
-                   const isStuttered = cleanWord && stutters.some(s => s.word && s.word.replace(/[^\w]/g, '').toLowerCase().includes(cleanWord));
-                   return (
-                      <span key={i} className={isStuttered ? 'bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-100 px-1 rounded border-b-2 border-red-400 mx-0.5' : 'mx-0.5'}>
-                         {word}
+            <div className="p-0">
+              <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-6 bg-[var(--bg-elevated)]/30">
+                <div className="text-base text-[var(--text-primary)] leading-[2.2] font-medium whitespace-pre-wrap text-justify">
+                  {(() => {
+                    const whisperWords = session.transcript?.words || [];
+                    const stutterEvents = (
+                      session.metrics?.detectedStutters ||
+                      session.analysis?.stutters ||
+                      []
+                    );
+
+                    // If we have word-level tokens from Whisper, render them
+                    // with timestamp-based stutter matching (accurate)
+                    if (whisperWords.length > 0) {
+                      return whisperWords.map((token, i) => {
+                        // Find stutter event within ±0.8s of this word's start
+                        const matchedStutter = stutterEvents.find(s =>
+                          s.position !== undefined &&
+                          Math.abs(s.position - token.start) < 0.8
+                        );
+                        const stutterType = matchedStutter?.type;
+
+                        // Color scheme per stutter type
+                        const colorClass =
+                          stutterType === 'sound_repetition'
+                            ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-900 dark:text-orange-100 border-orange-400'
+                            : stutterType === 'repetition'
+                            ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-100 border-amber-400'
+                            : stutterType === 'block'
+                            ? 'bg-red-100 dark:bg-red-900/40 text-red-900 dark:text-red-100 border-red-400'
+                            : stutterType === 'prolongation'
+                            ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-900 dark:text-purple-100 border-purple-400'
+                            : stutterType === 'filler' || stutterType === 'pause'
+                            ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-900 dark:text-blue-100 border-blue-400'
+                            : null;
+
+                        const tooltip =
+                          stutterType === 'sound_repetition' ? `Phoneme burst detected (e.g. p-p-${token.word?.toLowerCase()}) at ${token.start?.toFixed(1)}s`
+                            : stutterType === 'repetition' ? `Word repetition: "${token.word}" at ${token.start?.toFixed(1)}s`
+                            : stutterType === 'block' ? `Block / speech struggle at ${token.start?.toFixed(1)}s`
+                            : stutterType === 'prolongation' ? `Prolonged sound at ${token.start?.toFixed(1)}s`
+                            : stutterType === 'filler' ? `Filler word: "${token.word}"`
+                            : stutterType === 'pause' ? `Abnormal pause before this word`
+                            : null;
+
+                        return (
+                          <span
+                            key={i}
+                            className={`mx-0.5 ${
+                              colorClass
+                                ? `px-1.5 py-0.5 rounded-md border-b-2 font-bold cursor-help
+                                   transition-all hover:scale-105 inline-block ${colorClass}`
+                                : ''
+                            }`}
+                            title={tooltip || ''}
+                          >
+                            {token.word}
+                          </span>
+                        );
+                      });
+                    }
+
+                    // Fallback: plain text when no word tokens exist
+                    return (
+                      <span className="text-[var(--text-secondary)] italic">
+                        {session.transcript?.text || session.transcript || 'No transcript available.'}
                       </span>
-                   );
-                })}
+                    );
+                  })()}
+                </div>
               </div>
+              
+              {/* Color Legend */}
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5 px-6 py-3 border-t border-[var(--border-subtle)] bg-[var(--bg-elevated)]/20">
+                <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest self-center mr-1">Legend:</span>
+                {[
+                  { color: 'bg-orange-400', label: 'Phoneme Burst (p-p-p)' },
+                  { color: 'bg-amber-400',  label: 'Word Repetition' },
+                  { color: 'bg-red-400',    label: 'Block' },
+                  { color: 'bg-purple-400', label: 'Prolongation' },
+                  { color: 'bg-blue-400',   label: 'Filler / Pause' },
+                ].map(({ color, label }) => (
+                  <span key={label} className="flex items-center gap-1 text-[10px] font-bold text-[var(--text-muted)]">
+                    <span className={`w-2.5 h-2.5 rounded-sm ${color} inline-block flex-shrink-0`} />
+                    {label}
+                  </span>
+                ))}
+              </div>
+              {session.audioUrl && (
+                <div className="px-6 py-4 border-t border-[var(--border-subtle)] bg-[var(--bg-elevated)]/10">
+                  <audio 
+                    id="session-audio" 
+                    controls 
+                    className="w-full h-10 accent-[var(--accent)]"
+                    src={session.audioUrl.startsWith('http') ? session.audioUrl : `http://localhost:3001${session.audioUrl}`}
+                  >
+                    Your browser does not support the audio element.
+                  </audio>
+                </div>
+              )}
             </div>
           </div>
 
@@ -181,20 +284,33 @@ const SessionDetail = () => {
             <div className="bg-[var(--bg-surface)] rounded-3xl border border-[var(--border-subtle)] shadow-sm p-5">
               <h3 className="font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2"><Activity size={16} /> Stutter Events Timeline ({stutters.length})</h3>
               <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
-                {stutters.map((s, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 bg-[var(--bg-elevated)] rounded-xl">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-black ${
-                      s.type === 'repetition' ? 'bg-amber-500' : s.type === 'block' ? 'bg-red-500' : 'bg-slate-500'
-                    }`}>
-                      {s.type?.[0]?.toUpperCase()}
+                {stutters.map((s, i) => {
+                  const typeConfig = {
+                    sound_repetition: { color: 'bg-orange-500', label: 'Phoneme Burst',   desc: `Rapid sound burst (e.g. p-p-p) detected` },
+                    repetition:       { color: 'bg-amber-500',  label: 'Word Repetition', desc: s.word ? `"${s.word}" repeated` : 'Word repeated consecutively' },
+                    block:            { color: 'bg-red-500',     label: 'Block',           desc: 'Speech block — struggle at word onset' },
+                    prolongation:     { color: 'bg-purple-500',  label: 'Prolongation',   desc: 'Sound stretched longer than natural' },
+                    filler:           { color: 'bg-blue-500',    label: 'Filler Word',    desc: s.word ? `"${s.word}" — filler inserted` : 'Filler word used' },
+                    pause:            { color: 'bg-slate-500',   label: 'Abnormal Pause', desc: s.details || 'Silence longer than 300ms' },
+                  };
+                  const cfg = typeConfig[s.type] || {
+                    color: 'bg-slate-400',
+                    label: s.type || 'Dysfluency',
+                    desc: s.details || s.word || '—',
+                  };
+                  return (
+                    <div key={i} className="flex items-center gap-3 p-3 bg-[var(--bg-elevated)] rounded-xl">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-[10px] font-black ${cfg.color}`}>
+                        {cfg.label[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-[var(--text-primary)]">{cfg.label}</p>
+                        <p className="text-[11px] text-[var(--text-muted)] truncate">{cfg.desc}</p>
+                      </div>
+                      <span className="text-[11px] font-mono text-[var(--text-muted)] flex-shrink-0">{s.position?.toFixed(1)}s</span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-[var(--text-primary)] capitalize">{s.type}</p>
-                      <p className="text-[11px] text-[var(--text-muted)] truncate">{s.details || s.word || '—'}</p>
-                    </div>
-                    <span className="text-[11px] font-mono text-[var(--text-muted)]">{s.position?.toFixed(1)}s</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -211,6 +327,34 @@ const SessionDetail = () => {
                   <p className="text-xl font-black text-amber-500">{comparison.skippedWords?.length || 0}</p>
                   <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Skipped</p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {tokens.length > 0 && (
+            <div className="bg-[var(--bg-surface)] rounded-3xl border border-[var(--border-subtle)] shadow-sm p-5">
+              <h3 className="font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2"><Clock size={16} /> Word Sequence Analysis ({tokens.length})</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-[350px] overflow-y-auto custom-scrollbar pr-2">
+                {tokens.map((t, i) => {
+                  const cleanWord = t.word?.replace(/[^\w]/g, '').toLowerCase();
+                  const isStuttered = stutters.some(s => s.word && s.word.replace(/[^\w]/g, '').toLowerCase().includes(cleanWord));
+                  
+                  return (
+                    <div key={i} className={`p-2 rounded-xl border transition-all ${
+                      isStuttered 
+                        ? 'bg-rose-50 border-rose-200 text-rose-900' 
+                        : 'bg-[var(--bg-elevated)]/50 border-[var(--border-subtle)] text-[var(--text-secondary)]'
+                    }`}>
+                      <div className="flex justify-between items-start mb-1">
+                        <span className={`text-[8px] font-black uppercase tracking-tighter ${isStuttered ? 'text-rose-500' : 'text-[var(--text-muted)]'}`}>
+                          {t.start?.toFixed(1)}s
+                        </span>
+                        {isStuttered && <Zap size={10} className="text-rose-500" />}
+                      </div>
+                      <p className={`text-[12px] ${isStuttered ? 'font-black' : 'font-medium'} truncate`}>{t.word}</p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

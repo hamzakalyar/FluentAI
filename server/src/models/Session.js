@@ -53,7 +53,8 @@ const sessionSchema = new mongoose.Schema({
     detectedStutters: [{
       type: { type: String },
       word: String,
-      position: Number
+      position: Number,
+      details: String
     }]
   },
   // NLP analysis data

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Trophy, Target, Zap, Mic, CheckCircle2, 
   RotateCcw, Play, Pause, ChevronRight, Info, 
@@ -13,6 +13,7 @@ import Breadcrumb from '../components/layout/Breadcrumb';
 import Card from '../components/shared/Card';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../utils/cn';
+import WaveformCanvas from '../components/features/Recording/WaveformCanvas';
 
 const ProgressCheckCard = ({ targetSound, onComplete }) => {
   const [passage, setPassage] = useState(null);
@@ -94,9 +95,11 @@ const ProgressCheckCard = ({ targetSound, onComplete }) => {
 };
 
 const ExerciseCard = ({ exercise, onComplete, isInitiallyCompleted }) => {
-  const { status, startRecording, stopRecording, startAnalysis, analysisResults, resetRecording } = useRecording();
+  const { status, duration, audioBlob, startRecording, stopRecording, startAnalysis, analysisResults, resetRecording, analyser } = useRecording();
   const [isCompleted, setIsCompleted] = useState(isInitiallyCompleted || false);
   const [score, setScore] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef(null);
 
   useEffect(() => {
     if (status === 'success' && analysisResults && !isCompleted) {
@@ -133,13 +136,58 @@ const ExerciseCard = ({ exercise, onComplete, isInitiallyCompleted }) => {
         </div>
         {isCompleted && score !== null && <div className="text-[var(--accent)] font-black text-sm">Score: {score}/100 <Zap size={18} className="inline ml-1" /></div>}
       </div>
-      <div className="bg-[var(--bg-base)] border border-[var(--border-subtle)] rounded-2xl p-6 mb-6">
-        <p className="text-lg font-medium italic font-serif text-[var(--text-primary)]">"{exercise.text}"</p>
+      <div className="bg-[var(--bg-base)] border border-[var(--border-subtle)] rounded-2xl p-4 mb-4">
+        <p className="text-base font-medium italic font-serif text-[var(--text-primary)]">"{exercise.text}"</p>
       </div>
       <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
-        <button onClick={() => status === 'recording' ? stopRecording() : startRecording()} disabled={isCompleted} className={cn("w-12 h-12 rounded-full flex items-center justify-center transition-all", isRecording ? "bg-red-500 text-white animate-pulse" : "bg-[var(--accent)] text-white hover:scale-105", isCompleted && "bg-[var(--bg-elevated)] text-[var(--text-muted)]")}>
-          {isRecording ? <Pause size={20} /> : <Mic size={20} />}
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => {
+              if (status === 'recording') stopRecording();
+              else if (status === 'reviewing') {
+                if (isPlaying) {
+                  audioRef.current.pause();
+                  setIsPlaying(false);
+                } else {
+                  const url = URL.createObjectURL(audioBlob);
+                  if (!audioRef.current) audioRef.current = new Audio(url);
+                  audioRef.current.play();
+                  setIsPlaying(true);
+                  audioRef.current.onended = () => setIsPlaying(false);
+                }
+              }
+              else startRecording();
+            }} 
+            disabled={isCompleted} 
+            className={cn("w-12 h-12 rounded-full flex items-center justify-center transition-all shrink-0 shadow-lg", 
+              isRecording ? "bg-red-500 text-white animate-pulse" : 
+              status === 'reviewing' ? "bg-[var(--accent)] text-white hover:scale-105" :
+              "bg-[var(--accent)] text-white hover:scale-105", 
+              isCompleted && "bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed"
+            )}
+          >
+            {isRecording ? <Pause size={20} /> : 
+             status === 'reviewing' ? (isPlaying ? <Pause size={20} /> : <Play size={20} fill="currentColor" />) : 
+             <Mic size={20} />}
+          </button>
+
+          {(status === 'reviewing' || status === 'success') && (
+            <button 
+              onClick={resetRecording}
+              className="w-10 h-10 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)] flex items-center justify-center hover:text-amber-500 transition-all border border-[var(--border-subtle)]"
+              title="Re-record"
+            >
+              <RotateCcw size={18} />
+            </button>
+          )}
+        </div>
+
+        {status === 'recording' && (
+          <div className="flex-1 h-10 bg-[var(--bg-base)] rounded-xl border border-[var(--border-subtle)] flex items-center justify-center px-4 overflow-hidden">
+            <WaveformCanvas analyser={analyser} isRecording={true} color="var(--accent)" bars={30} />
+          </div>
+        )}
+
         {!isCompleted && (
            <button onClick={() => startAnalysis(null, exercise.text)} disabled={status !== 'reviewing'} className={cn("h-10 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all", status === 'reviewing' ? "bg-[var(--accent-navy)] text-white shadow-lg" : "bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed")}>
               Analyze Speech <ChevronRight size={14} className="inline ml-2" />
@@ -157,45 +205,115 @@ const Practice = () => {
   const [loading, setLoading] = useState(true);
   const [soundProgress, setSoundProgress] = useState([]);
   const [topWeakSound, setTopWeakSound] = useState(null);
+  const [userWeakSounds, setUserWeakSounds] = useState([]);
+  const [noWeakSounds, setNoWeakSounds] = useState(false);
 
   useEffect(() => {
-    const loadPracticeData = async () => {
-      setLoading(true);
-      try {
-        const [exercisesRes, progressRes] = await Promise.all([
-          practiceService.generateExercises(difficulty),
-          practiceService.getSoundProgress()
-        ]);
-        setExercises(exercisesRes.data.exercises || []);
-        setSoundProgress(progressRes.data.soundProgress || []);
-        if (exercisesRes.data.targetSounds?.length > 0) setTopWeakSound(exercisesRes.data.targetSounds[0]);
-      } catch (err) {
-        console.error("Failed to load practice data", err);
-      } finally {
-        setLoading(false);
+  const loadPracticeData = async () => {
+    setLoading(true);
+    setNoWeakSounds(false);
+    try {
+      // Step 1: Get user's detected weak sounds from analytics (recordings)
+      const summaryRes = await analyticsService.getSummary();
+      const detectedWeakSounds = (summaryRes.data?.topWeakSounds || []).map(ws => ws.sound);
+      setUserWeakSounds(detectedWeakSounds);
+
+      if (detectedWeakSounds.length === 0) {
+        console.log('No weak sounds in profile — server will use session or default fallback');
       }
-    };
+
+      if (detectedWeakSounds.length > 0) setTopWeakSound(detectedWeakSounds[0]);
+
+      // Step 2: Generate exercises targeting those exact weak sounds
+      const [exercisesRes, progressRes, todayResultsRes] = await Promise.all([
+        practiceService.generateExercises(difficulty, detectedWeakSounds),
+        practiceService.getSoundProgress(),
+        practiceService.getResults({ limit: 50 }) // Get recent results to find today's progress
+      ]);
+
+      setExercises(exercisesRes.data.exercises || []);
+
+      // Step 3: Set completed IDs based on today's results
+      const today = new Date().toDateString();
+      const todayCompleted = (todayResultsRes.data.results || [])
+        .filter(r => new Date(r.createdAt).toDateString() === today)
+        .map(r => r.targetSentence);
+      setCompletedIds(todayCompleted);
+
+      // Step 4: Build Mastery Tracker using ALL practice history
+      // We want to show sounds detected as weak AND sounds the user has already practiced
+      const practiceHistory = progressRes.data.soundProgress || [];
+      
+      // Combine sounds: those in history + those currently detected as weak
+      const allSoundsToTrack = Array.from(new Set([
+        ...practiceHistory.map(p => p.sound?.toUpperCase()),
+        ...detectedWeakSounds.map(s => s?.toUpperCase())
+      ])).filter(Boolean);
+
+      const mergedProgress = allSoundsToTrack.map(sound => {
+        const history = practiceHistory.find(p => p.sound?.toUpperCase() === sound);
+        return {
+          sound,
+          averageScore: history?.averageScore || 0,
+          bestScore: history?.bestScore || 0,
+          totalAttempts: history?.totalAttempts || 0,
+          lastAttempt: history?.lastAttempt || null,
+        };
+      }).sort((a, b) => b.totalAttempts - a.totalAttempts); // Show most practiced first
+
+      setSoundProgress(mergedProgress);
+
+    } catch (err) {
+      console.error("Failed to load practice data", err);
+      if (err.response?.status === 400) setNoWeakSounds(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadPracticeData();
   }, [difficulty]);
+
+  const getMasteryLevel = (score) => {
+    if (score >= 90) return { label: 'Mastered', color: 'text-emerald-600', bg: 'bg-emerald-500', track: 'bg-emerald-100' };
+    if (score >= 75) return { label: 'Proficient', color: 'text-teal-600', bg: 'bg-teal-500', track: 'bg-teal-100' };
+    if (score >= 50) return { label: 'Improving', color: 'text-amber-600', bg: 'bg-amber-400', track: 'bg-amber-100' };
+    return { label: 'Needs Practice', color: 'text-rose-600', bg: 'bg-rose-400', track: 'bg-rose-100' };
+  };
 
   const completedCount = completedIds.length;
   const totalExercises = exercises.length || 5;
   const showVerification = completedCount >= totalExercises && totalExercises > 0 && !completedIds.includes('verification-done');
-
-  const handleComplete = (id) => { if (!completedIds.includes(id)) setCompletedIds(prev => [...prev, id]); };
+  
+  const handleComplete = (id) => { 
+    if (!completedIds.includes(id)) {
+      setCompletedIds(prev => [...prev, id]);
+      // Refresh mastery tracker and stats after a few seconds to let DB settle
+      setTimeout(() => loadPracticeData(), 1500);
+    } 
+  };
 
   return (
     <div className="animate-fade-in-up min-h-screen relative pb-20">
-      <div className="relative mb-14">
+      <div className="relative mb-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <Breadcrumb />
             <h1 className="text-2xl font-black text-[var(--text-primary)] tracking-tight font-syne">Practice Engine</h1>
-            <p className="text-[var(--text-secondary)] font-medium mt-2 text-sm">Tailored to your fluency patterns</p>
+            {userWeakSounds.length > 0 ? (
+              <p className="text-[var(--text-secondary)] font-medium mt-1 text-sm">
+                Targeting your weak sounds: {userWeakSounds.map(s => (
+                  <span key={s} className="inline-block bg-[var(--accent-glow)] text-[var(--accent)] font-black text-[10px] px-2 py-0.5 rounded-md mr-1 uppercase">{s}</span>
+                ))}
+              </p>
+            ) : (
+              <p className="text-[var(--text-secondary)] font-medium mt-1 text-sm">Complete a recording session to unlock personalized exercises</p>
+            )}
           </div>
-          <div className="flex items-center gap-5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-3xl p-4 shadow-sm">
+          <div className="flex items-center gap-5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-3 shadow-sm">
             <div className="text-center px-1">
-              <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-1.5">Daily Progress</p>
+              <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-1">Daily Progress</p>
               <div className="flex items-center gap-3">
                 <span className="text-2xl font-black text-[var(--text-primary)] tracking-tighter">{completedCount}/{totalExercises}</span>
               </div>
@@ -205,7 +323,7 @@ const Practice = () => {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-8">
+      <div className="flex items-center gap-2 mb-6">
         <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mr-2">Difficulty:</span>
         {['easy', 'medium', 'hard'].map(d => (
           <button key={d} onClick={() => setDifficulty(d)} className={cn("px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all", difficulty === d ? "bg-[var(--accent)] text-white" : "bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-subtle)]")}>{d}</button>
@@ -213,39 +331,91 @@ const Practice = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          <AnimatePresence mode="popLayout">
-            {showVerification ? (
-              <motion.div key="verification" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
-                <ProgressCheckCard targetSound={topWeakSound} onComplete={() => setCompletedIds(prev => [...prev, 'verification-done'])} />
-              </motion.div>
-            ) : (
-              exercises.map((ex, index) => (
-                <motion.div key={ex.sentence} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                  <ExerciseCard exercise={{ id: ex.sentence, num: index+1, title: `${ex.targetSound} Focus`, tag: ex.soundLabel || ex.targetSound, difficulty: ex.difficulty || 'Medium', text: ex.sentence }} onComplete={handleComplete} isInitiallyCompleted={completedIds.includes(ex.sentence)} />
+        {/* Exercises */}
+        <div className="lg:col-span-2 space-y-6">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <Loader2 className="animate-spin text-[var(--accent)]" size={32} />
+              <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Loading personalized exercises...</p>
+            </div>
+          ) : (
+            <AnimatePresence mode="popLayout">
+              {showVerification ? (
+                <motion.div key="verification" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
+                  <ProgressCheckCard targetSound={topWeakSound} onComplete={() => setCompletedIds(prev => [...prev, 'verification-done'])} />
                 </motion.div>
-              ))
-            )}
-          </AnimatePresence>
-          {!showVerification && exercises.length === 0 && !loading && (
-            <div className="p-12 text-center bg-[var(--bg-surface)] rounded-[32px] border border-dashed border-[var(--border-subtle)]"><Sparkles size={40} className="mx-auto text-[var(--text-muted)] mb-4 opacity-20" /><p className="text-[var(--text-muted)] font-bold uppercase tracking-widest text-xs">No exercises remaining for today</p></div>
+              ) : (
+                exercises.map((ex, index) => (
+                  <motion.div key={ex.sentence} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
+                    <ExerciseCard
+                      exercise={{ id: ex.sentence, num: index+1, title: `${ex.targetSound} Focus`, tag: ex.soundLabel || ex.targetSound, difficulty: ex.difficulty || 'Medium', text: ex.sentence }}
+                      onComplete={handleComplete}
+                      isInitiallyCompleted={completedIds.includes(ex.sentence)}
+                    />
+                  </motion.div>
+                ))
+              )}
+            </AnimatePresence>
+          )}
+          {!showVerification && exercises.length === 0 && !loading && !noWeakSounds && (
+            <div className="p-12 text-center bg-[var(--bg-surface)] rounded-3xl border border-dashed border-[var(--border-subtle)]">
+              <Sparkles size={40} className="mx-auto text-[var(--text-muted)] mb-4 opacity-20" />
+              <p className="text-[var(--text-muted)] font-bold uppercase tracking-widest text-xs">No exercises remaining for today</p>
+            </div>
           )}
         </div>
-        <div className="lg:sticky lg:top-24 space-y-8">
-          <Card className="bg-[var(--accent-navy)] text-white border-none p-6">
-            <h3 className="font-black text-xl mb-5 flex items-center gap-3 font-syne uppercase tracking-tighter"><Target size={20} /> Today's Focus</h3>
-            <p className="text-white/80 text-base leading-relaxed mb-6 font-medium">{topWeakSound ? `Practicing "${topWeakSound}" sounds will stabilize your airflow today.` : "Practice daily to improve your fluency."}</p>
+
+        {/* Sidebar */}
+        <div className="lg:sticky lg:top-24 space-y-6">
+          {/* Today's Focus */}
+          <Card className="bg-[var(--accent-navy)] text-white border-none p-5">
+            <h3 className="font-black text-base mb-3 flex items-center gap-2 font-syne uppercase tracking-tight"><Target size={18} /> Today's Focus</h3>
+            <p className="text-white/80 text-sm leading-relaxed font-medium">
+              {topWeakSound
+                ? `The AI has identified "${topWeakSound}" as your primary challenge. These exercises are designed to build your confidence with this sound.`
+                : "Practice daily to improve your fluency."}
+            </p>
           </Card>
-          <Card>
-            <h4 className="font-black text-[11px] uppercase tracking-[0.2em] text-[var(--text-muted)] mb-5">Target Sounds Progress</h4>
-            <div className="space-y-4">
-              {soundProgress.slice(0, 3).map(sp => (
-                <div key={sp.sound} className="p-4 bg-[var(--bg-base)] rounded-2xl">
-                  <div className="flex justify-between mb-2"><span className="text-[11px] font-bold text-[var(--text-primary)] uppercase">Sound: {sp.sound}</span><span className="text-[11px] font-black text-[var(--text-muted)]">{sp.averageScore}/100</span></div>
-                  <div className="h-1.5 bg-[var(--bg-elevated)] rounded-full overflow-hidden"><div className="h-full bg-[var(--accent)]" style={{ width: `${sp.averageScore}%` }} /></div>
-                </div>
-              ))}
-            </div>
+
+          {/* Sound Mastery Tracker */}
+          <Card className="p-5">
+            <h4 className="font-black text-[11px] uppercase tracking-[0.2em] text-[var(--text-muted)] mb-4 flex items-center gap-2">
+              <TrendingUp size={13} /> Sound Mastery Tracker
+            </h4>
+            {soundProgress.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)] font-medium text-center py-4 opacity-60">Complete exercises to start tracking your progress per sound.</p>
+            ) : (
+              <div className="space-y-4">
+                {soundProgress.map(sp => {
+                  const mastery = getMasteryLevel(sp.averageScore);
+                  return (
+                    <div key={sp.sound} className="p-3 bg-[var(--bg-base)] rounded-2xl border border-[var(--border-subtle)]">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-7 h-7 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center justify-center text-[10px] font-black text-[var(--text-primary)]">{sp.sound}</span>
+                          <div>
+                            <span className={`text-[9px] font-black uppercase tracking-wider ${mastery.color}`}>{mastery.label}</span>
+                            <p className="text-[9px] text-[var(--text-muted)] font-bold">{sp.totalAttempts} attempt{sp.totalAttempts !== 1 ? 's' : ''}</p>
+                          </div>
+                        </div>
+                        <span className="text-sm font-black text-[var(--text-primary)]">{sp.averageScore}<span className="text-[9px] text-[var(--text-muted)]">/100</span></span>
+                      </div>
+                      <div className={`h-1.5 ${mastery.track} rounded-full overflow-hidden`}>
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${sp.averageScore}%` }}
+                          transition={{ duration: 0.8, ease: 'easeOut' }}
+                          className={`h-full ${mastery.bg} rounded-full`}
+                        />
+                      </div>
+                      {sp.bestScore > 0 && (
+                        <p className="text-[8px] text-[var(--text-muted)] font-bold mt-1.5">Best: {sp.bestScore}/100</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </Card>
         </div>
       </div>

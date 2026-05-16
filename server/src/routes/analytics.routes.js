@@ -67,8 +67,24 @@ router.get('/summary', auth, async (req, res) => {
       else if (recent < older - 5) improvementTrend = 'declining';
     }
 
-    const user = await User.findById(req.user._id);
-    const topWeakSounds = (user.weakSounds || []).sort((a, b) => b.frequency - a.frequency).slice(0, 5);
+    const user = await User.findById(req.user._id).select('weakSounds');
+    let topWeakSounds = user && user.weakSounds ? [...user.weakSounds].sort((a, b) => b.frequency - a.frequency).slice(0, 5) : [];
+
+    // Fallback: if user profile has no weak sounds yet, aggregate from recent sessions directly
+    if (topWeakSounds.length === 0 && sessions.length > 0) {
+      const soundMap = {};
+      for (const s of sessions.slice(0, 10)) {
+        for (const ws of (s.weakSoundsDetected || [])) {
+          if (ws.sound) {
+            soundMap[ws.sound] = (soundMap[ws.sound] || 0) + (ws.frequency || 1);
+          }
+        }
+      }
+      topWeakSounds = Object.entries(soundMap)
+        .map(([sound, frequency]) => ({ sound, frequency }))
+        .sort((a, b) => b.frequency - a.frequency)
+        .slice(0, 5);
+    }
 
     res.json({
       totalSessions,
@@ -114,7 +130,18 @@ router.get(['/historical', '/trend'], auth, async (req, res) => {
     .sort({ createdAt: 1 })
     .select('metrics.fluencyScore metrics.speechRateWPM metrics.repetitionCount metrics.pauseCount createdAt');
 
-    const chartData = sessions.map(s => ({
+    // FALLBACK: If no sessions in this timeframe, get the last 10 sessions anyway 
+    // so the charts aren't just empty.
+    let finalSessions = sessions;
+    if (sessions.length === 0) {
+      finalSessions = await Session.find({ user: req.user._id, status: 'completed' })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .select('metrics.fluencyScore metrics.speechRateWPM metrics.repetitionCount metrics.pauseCount createdAt');
+      finalSessions.reverse(); // Back to chronological order
+    }
+
+    const chartData = finalSessions.map(s => ({
       name: new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       score: s.metrics?.fluencyScore || 0,
       value: s.metrics?.fluencyScore || 0, // for generic 'value' consumers

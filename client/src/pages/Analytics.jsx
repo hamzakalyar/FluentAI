@@ -210,26 +210,47 @@ const Analytics = () => {
             </div>
           ) : (
             weakSounds.slice(0, 5).map((item, idx) => (
-              <div key={item.sound} className="flex items-center gap-6 p-5 hover:bg-[var(--bg-elevated)] transition-all group">
-                <div className="w-12 h-12 rounded-2xl bg-[var(--bg-base)] flex items-center justify-center font-black text-teal-600 text-[16px] shrink-0 border border-[var(--border-subtle)]">
+              <div key={item.sound} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 p-5 hover:bg-[var(--bg-elevated)] transition-all group">
+                <div className="min-w-[70px] h-14 px-3 rounded-2xl bg-[var(--bg-base)] flex items-center justify-center font-black text-teal-600 text-sm shrink-0 border border-[var(--border-subtle)] shadow-sm text-center">
                   {item.sound}
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 w-full">
                   <div className="flex justify-between items-center mb-2.5">
-                    <span className="text-[11px] font-black text-[var(--text-primary)] uppercase tracking-tight">Detected {item.frequency}×</span>
-                    <Badge variant="ghost" className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5">{item.trend || 'stable'}</Badge>
+                    <div className="flex flex-col">
+                      <span className="text-[11px] font-black text-[var(--text-primary)] uppercase tracking-tight">
+                        {item.frequency > 0 ? `Detected ${item.frequency}×` : 'Perfect Performance'}
+                      </span>
+                      <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">
+                        {item.frequency > 0 ? 'Requires attention' : 'Target achieved'}
+                      </span>
+                    </div>
+                    <Badge variant="ghost" className={cn(
+                      "text-[9px] font-black uppercase tracking-widest px-2 py-0.5",
+                      item.frequency === 0 ? "text-emerald-600 bg-emerald-500/5" : "text-amber-600 bg-amber-500/5"
+                    )}>
+                      {item.frequency === 0 ? 'Mastered' : item.trend || 'stable'}
+                    </Badge>
                   </div>
-                  <div className="h-2 bg-[var(--bg-base)] rounded-full overflow-hidden">
+                  <div className="h-2 bg-[var(--bg-base)] rounded-full overflow-hidden border border-[var(--border-subtle)]/30">
                     <motion.div
                       initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(100, (item.frequency / (weakSounds[0]?.frequency || 1)) * 100)}%` }}
-                      transition={{ duration: 1 }}
+                      animate={{ width: `${item.frequency === 0 ? 100 : Math.min(100, (item.frequency / (weakSounds[0]?.frequency || 1)) * 100)}%` }}
+                      transition={{ duration: 1, ease: "easeOut" }}
                       className="h-full rounded-full"
-                      style={{ backgroundColor: soundColors[idx % soundColors.length] }}
+                      style={{ backgroundColor: item.frequency === 0 ? '#10b981' : soundColors[idx % soundColors.length] }}
                     />
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" className="h-9 px-4 text-[10px] font-black uppercase tracking-widest" onClick={() => navigate('/practice')}>Practice</Button>
+                <div className="flex items-center gap-3 self-end sm:self-center">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-9 px-4 text-[10px] font-black uppercase tracking-widest border-[var(--border-subtle)] hover:bg-[var(--accent)] hover:text-white transition-all" 
+                    onClick={() => navigate('/practice')}
+                  >
+                    Practice
+                  </Button>
+                </div>
               </div>
             ))
           )}
