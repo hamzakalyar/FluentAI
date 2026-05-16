@@ -17,7 +17,7 @@ const Input = React.forwardRef(({
   const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
 
   const variants = {
-    dark:  'bg-[#0A0F1E] border-[#1E2A40] text-[#F0F4FF] focus:border-[#0D9488]/40',
+    dark: 'bg-[#0A0F1E] border-[#1E2A40] text-[#F0F4FF] focus:border-teal-500/40 focus:ring-4 focus:ring-teal-500/5',
     light: 'bg-white border-slate-200 text-slate-900 focus:border-teal-500/40 focus:ring-4 focus:ring-teal-500/5',
   };
 
@@ -27,7 +27,7 @@ const Input = React.forwardRef(({
         <label 
           htmlFor={id} 
           className={cn(
-            "block text-[11px] font-black uppercase tracking-[0.2em] ml-1",
+            "block text-[11px] font-black uppercase tracking-[0.2em] ml-1 font-syne",
             variant === 'dark' ? "text-slate-400" : "text-slate-500"
           )}
         >
@@ -54,17 +54,17 @@ const Input = React.forwardRef(({
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-[#3D4F6B] hover:text-[#8B9BB8] transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-teal-500 transition-colors"
           >
-            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         )}
       </div>
 
       {(error || helperText) && (
         <p className={cn(
-          "text-[11px] font-bold ml-1 font-body",
-          error ? "text-[#FF6B6B]" : "text-[#8B9BB8]"
+          "text-[11px] font-bold ml-1",
+          error ? "text-red-500" : "text-slate-400"
         )}>
           {error || helperText}
         </p>

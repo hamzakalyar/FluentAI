@@ -105,19 +105,39 @@ def transcribe_audio(audio_path):
                                            # "I I I want" becomes "I want"
         suppress_blank=False,              # Don't suppress blank/hesitation tokens
         temperature=0.0,                   # Use greedy decoding for raw accuracy
-        no_speech_threshold=0.3,           # Lower threshold — keep more audio segments
-        compression_ratio_threshold=3.0    # Higher tolerance — don't skip "repetitive" segments
+        no_speech_threshold=0.6,           # Default threshold to prevent hallucinations on silence
+        compression_ratio_threshold=3.0,   # Higher tolerance — don't skip "repetitive" segments
+        initial_prompt="Umm, let me think... I I I want to go." # Helps anchor the model to English and dysfluent speech, reducing YouTube subtitle hallucinations.
     )
     
     # Extract word-level data from Whisper's output
     words = []
+    valid_text_segments = []
+    
     for segment in result.get("segments", []):
+        # Explicitly drop segments that Whisper is unsure about (silence/noise)
+        if segment.get("no_speech_prob", 0.0) > 0.4:
+            continue
+            
+        segment_text = segment.get("text", "").strip()
+        valid_text_segments.append(segment_text)
+        
         for word_info in segment.get("words", []):
             words.append({
                 "word": word_info["word"].strip(),
                 "start": round(word_info["start"], 3),
                 "end": round(word_info["end"], 3)
             })
+            
+    final_text = " ".join(valid_text_segments).strip()
+    
+    # Post-processing: Filter out common Whisper hallucinations for short audio
+    hallucinations = ["thank you", "subscribe", "amara.org", "i'm sorry", "thanks for watching", "bye"]
+    if len(final_text.split()) < 8:
+        lower_text = final_text.lower()
+        if any(h in lower_text for h in hallucinations):
+            final_text = ""
+            words = []
     
     # Calculate total audio duration
     duration = 0.0
@@ -127,7 +147,7 @@ def transcribe_audio(audio_path):
         duration = result["segments"][-1]["end"]
     
     return {
-        "text": result.get("text", "").strip(),
+        "text": final_text,
         "words": words,
         "language": result.get("language", "en"),
         "duration": round(duration, 2)

@@ -8,7 +8,8 @@ const SECTIONS = [
     links: [
       { label: 'Dashboard', to: '/dashboard' },
       { label: 'Analytics', to: '/analytics' },
-      { label: 'Practice', to: '/practice' }
+      { label: 'Practice', to: '/practice' },
+      { label: 'AI Assistant', to: '/assistant' }
     ]
   },
   {
@@ -16,7 +17,8 @@ const SECTIONS = [
     links: [
       { label: 'Privacy', to: '/privacy' },
       { label: 'Terms', to: '/terms' },
-      { label: 'HIPAA', to: '/privacy' }
+      { label: 'HIPAA', to: '/privacy' },
+      { label: 'Accessibility', to: '/help' }
     ]
   }
 ];
@@ -38,7 +40,7 @@ export default function Footer() {
               <span className="font-black text-xl tracking-tighter text-white">FluentAI</span>
             </Link>
             <p className="text-slate-500 text-xs leading-relaxed font-medium">
-              Clinical-grade acoustic diagnostics for professional speech therapy and fluency monitoring.
+              Clinical-grade acoustic diagnostics for professional speech therapy and fluency monitoring. Designed to reduce cognitive load and provide actionable insights.
             </p>
           </div>
 
@@ -81,9 +83,12 @@ export default function Footer() {
 
         {/* ── Bottom Strip ── */}
         <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
-            © {new Date().getFullYear()} FluentAI Platform.
-          </p>
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8">
+            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+              © {new Date().getFullYear()} FluentAI Platform.
+            </p>
+            <span className="hidden sm:inline text-[10px] text-slate-700">Version 1.0.0</span>
+          </div>
           
           <div className="flex items-center gap-6">
              <div className="flex items-center gap-2">
@@ -91,9 +96,9 @@ export default function Footer() {
                 <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">System Live</span>
              </div>
              <div className="flex items-center gap-3">
-                <div className="p-1.5 bg-white/5 rounded-md cursor-pointer hover:bg-white/10 transition-colors">
+                <a href="mailto:support@fluentai.com" className="p-1.5 bg-white/5 rounded-md cursor-pointer hover:bg-white/10 transition-colors">
                    <Mail size={12} className="text-slate-500" />
-                </div>
+                </a>
              </div>
           </div>
         </div>

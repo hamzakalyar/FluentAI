@@ -93,14 +93,13 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-6">
             <button
               onClick={() => navigate("/login")}
-              className="text-sm font-black text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+              className="text-sm font-black text-[var(--text-secondary)] hover:text-teal-600 transition-colors"
             >
               Sign In
             </button>
             <button
               onClick={() => navigate("/register")}
-              className="h-11 px-7 text-sm font-black text-white rounded-xl transition-all hover:bg-teal-700 hover:shadow-xl hover:shadow-teal-500/20 active:scale-95"
-              style={{ background: "#0D9488" }}
+              className="h-11 px-7 text-sm font-black text-white rounded-xl transition-all bg-teal-600 hover:bg-teal-700 hover:shadow-xl hover:shadow-teal-500/20 active:scale-95"
             >
               Get Started
             </button>
@@ -143,8 +142,7 @@ export default function Navbar() {
               </button>
               <button
                 onClick={() => navigate("/register")}
-                className="h-14 w-full font-black text-white rounded-2xl shadow-lg shadow-teal-500/10 active:scale-[0.98] transition-all"
-                style={{ background: "#0D9488" }}
+                className="h-14 w-full font-black text-white rounded-2xl shadow-lg shadow-teal-500/10 active:scale-[0.98] transition-all bg-teal-600 hover:bg-teal-700"
               >
                 Get Started
               </button>

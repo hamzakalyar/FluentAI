@@ -22,10 +22,10 @@ const AuthLayout = ({ children, title, subtitle }) => {
           <Link to="/" className="inline-flex items-center gap-4 mb-16 group">
             <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-teal-500/30 transition-transform group-hover:scale-110"
               style={{ background: 'linear-gradient(135deg,#0D9488,#14B8A6)' }}>F</div>
-            <span className="font-black text-2xl tracking-tighter text-white">FluentAI</span>
+            <span className="font-black text-2xl tracking-tighter text-white font-syne">FluentAI</span>
           </Link>
 
-          <h2 className="text-5xl font-black text-white leading-[1.1] mb-8 tracking-tight">
+          <h2 className="text-5xl font-black text-white leading-[1.1] mb-8 tracking-tight font-syne">
             Elevating the standard of <span className="text-teal-400">clinical fluency</span> monitoring.
           </h2>
 
@@ -73,7 +73,7 @@ const AuthLayout = ({ children, title, subtitle }) => {
 
           {/* Heading */}
           <div className="mb-10 text-center lg:text-left">
-            <h1 className="text-4xl font-black mb-3 tracking-tight text-slate-900">{title}</h1>
+            <h1 className="text-4xl font-black mb-3 tracking-tight text-slate-900 font-syne">{title}</h1>
             <p className="text-base font-bold text-slate-400">{subtitle}</p>
           </div>
 
@@ -83,8 +83,6 @@ const AuthLayout = ({ children, title, subtitle }) => {
           </div>
         </div>
       </div>
-
-
     </div>
   );
 };

@@ -47,7 +47,7 @@ const StatCard = ({ label, value, subValue, delta = '', icon: Icon, isNegativeMe
             </div>
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-56 p-3 bg-slate-900/95 backdrop-blur-md text-white text-[10px] font-medium rounded-xl opacity-0 translate-y-2 pointer-events-none group-hover/info:opacity-100 group-hover/info:translate-y-0 transition-all z-50 shadow-2xl border border-white/10">
               <div className="font-bold text-teal-400 mb-1 uppercase tracking-widest text-[9px]">Metric Analysis</div>
-              This data point monitors your {label.toLowerCase()} performance to provide objective clinical insights into your fluency progression.
+              This data point monitors your {label?.toLowerCase() || 'clinical'} performance to provide objective clinical insights into your fluency progression.
             </div>
           </div>
         </div>

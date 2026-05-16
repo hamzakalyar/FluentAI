@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Search, Bell, HelpCircle, Moon, Sun, Mic2, Menu, User, LogOut } from 'lucide-react';
+import { Search, Bell, HelpCircle, Moon, Sun, Mic2, Menu, LogOut, Settings, User as UserIcon } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useAuth } from '../../context/AuthContext';
 
@@ -11,6 +11,14 @@ const MainLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+
+  const formatName = (name) => {
+    if (!name) return 'Hassan';
+    const firstPart = name.split(' ')[0];
+    return firstPart.charAt(0).toUpperCase() + firstPart.slice(1).toLowerCase();
+  };
+
+  const displayName = formatName(user?.name);
 
   // Close user menu on click outside
   React.useEffect(() => {
@@ -82,9 +90,10 @@ const MainLayout = () => {
 
           {/* Left: Refined Greeting */}
           <div className="flex-shrink-0">
-            <h1 className="font-syne text-[22px] font-black text-[var(--text-primary)] tracking-tight leading-none">
-              Hello, <span className="text-teal-600">{user?.name?.split(' ')[0] || 'Hassan'}</span>
+            <h1 className="font-syne text-[18px] sm:text-[20px] font-bold text-[var(--text-primary)] tracking-tight leading-none">
+              Hello, <span className="text-teal-600">{displayName}</span>
             </h1>
+            <p className="hidden sm:block text-[11px] font-medium text-[var(--text-muted)]">Here's your fluency overview</p>
           </div>
 
           {/* Center: Minimalist Search Portal */}
@@ -129,15 +138,15 @@ const MainLayout = () => {
             <div className="relative user-dropdown-container">
               <button 
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className={`flex items-center gap-2.5 p-1 rounded-full transition-all duration-500 ${isUserMenuOpen ? 'bg-[var(--bg-elevated)] ring-4 ring-teal-500/5' : 'hover:bg-[var(--bg-elevated)]'}`}
+                className={`flex items-center gap-2.5 p-1 rounded-full transition-all duration-500 ${isUserMenuOpen ? 'bg-[var(--bg-elevated)] ring-4 ring-teal-50/5' : 'hover:bg-[var(--bg-elevated)]'}`}
               >
                 <div className="w-9 h-9 rounded-full bg-[var(--bg-base)] flex items-center justify-center text-[var(--text-primary)] font-black text-[14px] shadow-sm relative group-hover:scale-105 transition-transform overflow-hidden border border-[var(--border-subtle)]">
                   <div className="absolute inset-0 bg-gradient-to-tr from-teal-600/40 to-transparent opacity-60" />
-                  <span className="relative z-10">{user?.name?.[0] || 'H'}</span>
+                  <span className="relative z-10">{displayName.charAt(0)}</span>
                   <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[var(--bg-surface)] shadow-sm" />
                 </div>
                 <div className="hidden xl:block text-left pr-2">
-                  <p className="text-[12px] font-black text-[var(--text-primary)] leading-none">{user?.name?.split(' ')[0] || 'Hassan'}</p>
+                  <p className="text-[12px] font-black text-[var(--text-primary)] leading-none">{displayName}</p>
                 </div>
               </button>
 
@@ -153,9 +162,10 @@ const MainLayout = () => {
                   {/* Menu Items */}
                   <div className="px-2.5 space-y-1">
                     {[
-                      { icon: <User size={16} />, label: 'View Profile', path: '/profile' },
+                      { icon: <UserIcon size={16} />, label: 'View Profile', path: '/profile' },
                       { icon: <Mic2 size={16} />, label: 'My Sessions', path: '/analytics' },
                       { icon: <HelpCircle size={16} />, label: 'Support Center', path: '/help' },
+                      { icon: <Settings size={16} />, label: 'Settings', path: '/settings' },
                     ].map((item, idx) => (
                       <button
                         key={idx}
@@ -184,7 +194,7 @@ const MainLayout = () => {
           </div>
         </header>
 
-        <main className={`${isRecordingPage ? 'p-0' : 'p-[var(--page-padding)]'} relative flex-1`}>
+        <main className={`${isRecordingPage ? 'p-0' : 'p-[var(--page-padding)]'} relative flex-1 overflow-x-hidden`}>
           {/* Backdrop Decor Glows */}
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[var(--accent)]/5 rounded-full blur-[120px] -z-10 pointer-events-none opacity-50 dark:opacity-20" />
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-[100px] -z-10 pointer-events-none opacity-50 dark:opacity-20" />

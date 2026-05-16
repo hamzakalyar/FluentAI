@@ -11,35 +11,27 @@
 
 :root {
   /* Backgrounds */
-  --bg-base: #F1F5F9;
-  /* slightly deeper slate for better card contrast */
-  --bg-surface: #FFFFFF;
-  /* pure white cards */
+  --bg-base: #F1F5F9;   /* slightly deeper slate for better card contrast */
+  --bg-surface: #FFFFFF;   /* pure white cards */
   --bg-elevated: #FFFFFF;
   --bg-gradient: linear-gradient(145deg, #F8FAFC 0%, #F1F5F9 100%);
 
   /* Brand Palette — Institutional Navy & Mint */
-  --accent: #0D9488;
-  /* Clinical Mint */
-  --accent-navy: #0B0E14;
-  /* Deep Midnight Charcoal */
-  --accent-glow: #F0FDF9;
-  /* soft mint background */
+  --accent: #0D9488;   /* Clinical Mint */
+  --accent-navy: #0B0E14;   /* Deep Midnight Charcoal */
+  --accent-glow: #F0FDF9;   /* soft mint background */
   --accent-border: rgba(13, 148, 136, 0.20);
 
   /* Data Semantics (Emotional Design: No Red) */
   --success: #0D9488;
-  --warning: #F59E0B;
-  /* Amber for alerts */
+  --warning: #F59E0B;   /* Amber for alerts */
   --info: #3B82F6;
 
   /* Text Hierarchy */
-  --text-primary: #0F172A;
-  /* Navy for headings */
+  --text-primary: #0F172A;   /* Navy for headings */
   --text-secondary: #475569;
   --text-muted: #94A3B8;
-  --text-tertiary: #64748B;
-  /* Neutral for secondary info */
+  --text-tertiary: #64748B;   /* Neutral for secondary info */
 
   /* Borders & Shadows (Premium Softness) */
   --border-subtle: rgba(15, 23, 42, 0.06);
@@ -48,7 +40,6 @@
 
   /* DASHBOARD GRID SYSTEM (Audit Fix) */
   --page-padding: 16px;
-
   @media (min-width: 768px) {
     --page-padding: 32px;
   }
@@ -100,22 +91,12 @@
   --border-subtle: rgba(255, 255, 255, 0.1);
 }
 
-.font-syne {
-  font-family: var(--font-syne);
-}
-
-.font-mono {
-  font-family: var(--font-mono);
-}
+.font-syne { font-family: var(--font-syne); }
+.font-mono { font-family: var(--font-mono); }
 
 @keyframes shimmer {
-  from {
-    transform: translateX(-100%);
-  }
-
-  to {
-    transform: translateX(100%);
-  }
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
 }
 
 .animate-shimmer {
@@ -123,19 +104,8 @@
 }
 
 @layer base {
-
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-
-  html {
-    scroll-behavior: smooth;
-  }
-
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
   body {
     background-color: var(--bg-base);
     color: var(--text-secondary);
@@ -150,46 +120,27 @@
 }
 
 /* Scrollbar styling for pro look */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-base);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--bg-surface);
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
-}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: var(--bg-surface); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
 @layer utilities {
-
   /* ── Hero background ─── */
   .hero-gradient {
-    background: #ECFEFF;
+    background: linear-gradient(135deg, #DDFAF5 0%, #EDF9F7 30%, #F5FFFE 60%, #FFFFFF 100%);
   }
 
   /* ── CTA background ─── */
   .cta-gradient {
-    background: #ECFEFF;
+    background: linear-gradient(135deg, #DDFAF5 0%, #E8FDFB 40%, #F0FFFE 100%);
   }
 
   /* ── Progress bar fill animation ─── */
   @keyframes fillBar {
-    from {
-      width: 0;
-    }
-
-    to {
-      width: var(--bar-w);
-    }
+    from { width: 0; }
+    to   { width: var(--bar-w); }
   }
-
   .bar-fill {
     animation: fillBar 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
   }
@@ -199,13 +150,9 @@
     opacity: 0;
     transform: translateY(22px);
     transition: opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
-      transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+                transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
   }
-
-  .reveal.visible {
-    opacity: 1;
-    transform: none;
-  }
+  .reveal.visible { opacity: 1; transform: none; }
 
   /* ── Workflow connector line ─── */
   .step-line {

@@ -24,6 +24,7 @@ const RecordingStudio = () => {
    const [passages, setPassages] = useState([]);
    const [activePassage, setActivePassage] = useState(null);
    const [loadingPassages, setLoadingPassages] = useState(true);
+   const [difficulty, setDifficulty] = useState('Medium');
 
    // Live Teleprompter State
    const [liveTranscript, setLiveTranscript] = useState('');
@@ -35,7 +36,6 @@ const RecordingStudio = () => {
       if (file) {
          const reader = new FileReader();
          reader.onload = (event) => {
-            const blob = new Blob([event.target.result], { type: file.type });
             // Logic to handle the uploaded blob
          };
          reader.readAsArrayBuffer(file);
@@ -57,15 +57,11 @@ const RecordingStudio = () => {
       resetRecording,
    } = useRecording();
 
-   // Removed automatic navigation on success as per user request
-   // User now clicks a "View Result" button to proceed.
-
    // ── Audio Player State ──
    const audioRef = useRef(null);
    const [isPlaying, setIsPlaying] = useState(false);
    const [volume, setVolume] = useState(1);
    const [audioProgress, setAudioProgress] = useState(0);
-   const [isTestingMic, setIsTestingMic] = useState(false);
 
    // Sync real audio blob to player
    useEffect(() => {
@@ -102,16 +98,6 @@ const RecordingStudio = () => {
       }
    };
 
-   const testMic = () => {
-      setIsTestingMic(true);
-      startRecording();
-      setTimeout(() => {
-         stopRecording();
-         resetRecording();
-         setIsTestingMic(false);
-      }, 3000);
-   };
-
    // ── Step Indicator Logic ──
    const steps = [
       { label: 'READY', status: 'idle' },
@@ -136,9 +122,7 @@ const RecordingStudio = () => {
          try {
             setLoadingPassages(true);
             const res = await api.get('/assessment-passages');
-            // The API returns { passages: [...] }
             const passageList = res.data.passages || res.data || [];
-
             setPassages(passageList);
          } catch (err) {
             console.error('Failed to load passages', err);
@@ -152,21 +136,16 @@ const RecordingStudio = () => {
    // Fetch full text when a passage is selected or passages load
    useEffect(() => {
       if (!passages || passages.length === 0) return;
-
       const loadFullPassage = async () => {
          try {
-            // Pick a random passage from the list
             const randomPassage = passages[Math.floor(Math.random() * passages.length)];
-
             const res = await api.get(`/assessment-passages/${randomPassage.id}`);
-            // The API returns { passage: { ... } }
             setActivePassage(res.data.passage || res.data);
-            setLiveTranscript(''); // reset transcript on passage change
+            setLiveTranscript(''); 
          } catch (err) {
             console.error('Failed to load full passage', err);
          }
       };
-
       loadFullPassage();
    }, [passages]);
 
@@ -189,16 +168,12 @@ const RecordingStudio = () => {
          {/* Hidden Audio for Playback */}
          <audio ref={audioRef} onTimeUpdate={handleTimeUpdate} onEnded={() => setIsPlaying(false)} className="hidden" />
 
-
-
-         {/* ── MAIN 2-COLUMN WORKSPACE ── */}
+         {/* ── MAIN WORKSPACE ── */}
          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] xl:grid-cols-[1fr_360px] gap-8 flex-1 mt-0 min-h-0">
-
-
 
             {/* CENTER PANEL */}
             <div className="flex flex-col gap-4 min-h-0 h-full">
-               {/* Page Header (Consistent with Analytics) */}
+               {/* Page Header */}
                <div className="mb-6">
                   <Breadcrumb />
                   <div className="flex flex-col gap-2 mt-2">
@@ -207,7 +182,7 @@ const RecordingStudio = () => {
                   </div>
                </div>
 
-               {/* Step Indicator (Refined) */}
+               {/* Step Indicator */}
                <div className="hidden lg:flex w-full max-w-md mx-auto items-center justify-center gap-12 relative px-4 py-1 mb-2">
                   <div className="absolute top-[35%] left-8 right-8 h-[1.5px] bg-[var(--border-subtle)] -z-10 -translate-y-1/2" />
                   {steps.map((step, idx) => (
@@ -222,6 +197,7 @@ const RecordingStudio = () => {
                      </div>
                   ))}
                </div>
+
                {/* Practice Passage (ApeUni Style) */}
                <div className="bg-[var(--bg-surface)] rounded-[24px] p-3 border border-[var(--border-subtle)] shadow-lg relative shrink-0">
                   <div className="flex items-center justify-between mb-3 pb-3 border-b border-[var(--border-subtle)]">
@@ -229,21 +205,19 @@ const RecordingStudio = () => {
                         <div className="w-8 h-8 rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[var(--accent)]">
                            <Target size={16} />
                         </div>
-                         <div className="flex flex-col">
-                            <span className="text-[13px] font-black text-[var(--text-primary)] uppercase tracking-tight">Active Practice</span>
-                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
+                        <div className="flex flex-col">
+                           <span className="text-[13px] font-black text-[var(--text-primary)] uppercase tracking-tight">Active Practice</span>
+                        </div>
+                     </div>
+                     <div className="flex items-center gap-2">
                         <button
                            onClick={async () => {
                               const res = await api.get(`/assessment-passages/dynamic`);
                               setActivePassage(res.data.passage || res.data);
-                              setLiveTranscript('');
                            }}
-                           className={`h-7 px-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${activePassage?.id === 'dynamic' ? 'bg-[var(--accent)] text-white shadow-md' : 'bg-[var(--bg-base)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)]'}`}
-                           title="Generate a random passage"
+                           className={`h-7 px-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 bg-[var(--bg-base)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)]`}
                         >
-                           <RotateCcw size={10} className={activePassage?.id === 'dynamic' ? 'animate-spin-once' : ''} /> Random
+                           <RotateCcw size={10} /> Random
                         </button>
                         <div className="w-[1px] h-6 bg-[var(--border-subtle)] mx-0.5" />
                         <div className="flex items-center gap-1">
@@ -253,7 +227,6 @@ const RecordingStudio = () => {
                                  onClick={async () => {
                                     const res = await api.get(`/assessment-passages/${p.id}`);
                                     setActivePassage(res.data.passage || res.data);
-                                    setLiveTranscript('');
                                  }}
                                  className={`w-7 h-7 rounded-lg text-[10px] font-black transition-all ${activePassage?.id === p.id ? 'bg-[var(--accent)] text-white shadow-md' : 'bg-[var(--bg-base)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)]'}`}
                               >
@@ -273,9 +246,8 @@ const RecordingStudio = () => {
                   </div>
                </div>
 
-               {/* MAIN CARD / VISUALIZATION (Fixed size, moves down to fill space) */}
+               {/* MAIN CARD / VISUALIZATION */}
                <div className="bg-[#0f172a] rounded-[32px] shadow-2xl p-6 sm:p-8 border border-slate-800 h-[320px] flex flex-col relative overflow-hidden shrink-0 group">
-                  {/* Ambient Background Wave (Subtle) */}
                   <div className="absolute inset-0 opacity-10 pointer-events-none">
                      <div className="absolute top-1/2 left-0 right-0 h-32 -translate-y-1/2 flex items-center justify-around gap-1 px-4">
                         {[...Array(40)].map((_, i) => (
@@ -294,43 +266,31 @@ const RecordingStudio = () => {
                      </span>
                   </div>
 
-                  {status === 'permissions' && (
-                     <div className="flex-1 flex flex-col items-center justify-center animate-pulse relative z-10">
-                        <Mic size={32} className="text-slate-500 mb-3" />
-                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Awaiting Audio Access...</p>
-                     </div>
-                  )}
-
                   {status === 'idle' && (
                      <div className="flex-1 flex flex-col items-center justify-center animate-fade-in relative z-10">
                         <div className="flex items-center gap-16">
-                           {/* Record Path */}
                            <div className="flex flex-col items-center gap-4 group/btn">
                               <button 
                                  onClick={startRecording} 
-                                 className="relative w-20 h-20 rounded-full bg-teal-500 shadow-[0_0_30px_rgba(20,184,166,0.3)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all group-hover/btn:shadow-[0_0_40px_rgba(20,184,166,0.5)]"
+                                 className="relative w-20 h-20 rounded-full bg-teal-500 shadow-[0_0_30px_rgba(20,184,166,0.3)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
                               >
                                  <Mic size={32} className="text-white" />
                                  <div className="absolute inset-0 rounded-full bg-teal-400 animate-ping opacity-20 pointer-events-none group-hover/btn:opacity-0" />
                               </button>
                               <span className="text-[12px] font-black text-slate-200 uppercase tracking-widest">Start Live</span>
                            </div>
-
                            <div className="h-16 w-[1px] bg-slate-800" />
-
-                           {/* Upload Path */}
                            <div className="flex flex-col items-center gap-4 group/btn">
                               <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="audio/*" className="hidden" />
                               <button 
                                  onClick={() => fileInputRef.current?.click()}
-                                 className="relative w-20 h-20 rounded-full bg-slate-800 border-2 border-slate-700 text-slate-400 flex items-center justify-center hover:scale-110 active:scale-95 transition-all hover:border-teal-500 hover:text-teal-500 group-hover/btn:bg-slate-700"
+                                 className="relative w-20 h-20 rounded-full bg-slate-800 border-2 border-slate-700 text-slate-400 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
                               >
                                  <CloudUpload size={32} />
                               </button>
                               <span className="text-[12px] font-black text-slate-200 uppercase tracking-widest">Upload Device</span>
                            </div>
                         </div>
-                        <p className="mt-8 text-[11px] text-slate-500 font-bold uppercase tracking-[0.2em]">Select input to begin</p>
                      </div>
                   )}
 
@@ -346,35 +306,24 @@ const RecordingStudio = () => {
                            <button onClick={stopRecording} className="w-16 h-16 rounded-full bg-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] text-white flex items-center justify-center hover:scale-105 transition-all">
                               <Square size={24} fill="currentColor" />
                            </button>
-                           <button className="w-12 h-12 rounded-full border-2 border-slate-700 text-slate-500 flex items-center justify-center opacity-50 cursor-not-allowed">
-                              <RotateCcw size={20} />
-                           </button>
                         </div>
                      </div>
                   )}
 
                   {status === 'reviewing' && (
                      <div className="flex-1 flex flex-col items-center justify-center animate-fade-in relative z-10">
-                        <div className="w-full max-w-sm bg-slate-800/40 rounded-2xl p-4 mb-5 border border-slate-700/50 backdrop-blur-md flex flex-col gap-3 shadow-xl">
+                        <div className="w-full max-w-sm bg-slate-800/40 rounded-2xl p-4 mb-5 border border-slate-700/50 flex flex-col gap-3 shadow-xl">
                            <div className="flex items-center gap-4">
                               <button onClick={togglePlayback} className="w-10 h-10 rounded-full bg-teal-500 text-white flex items-center justify-center shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:scale-110 transition-all shrink-0">
                                  {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} className="ml-1" fill="currentColor" />}
                               </button>
                               <div className="flex-1">
-                                 <div className="flex justify-between items-center mb-1">
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Master Playback</span>
-                                    <span className="text-[10px] font-mono text-teal-400 font-bold">{formatDuration(duration)}</span>
-                                 </div>
                                  <div className="h-1.5 w-full bg-slate-900/50 rounded-full relative overflow-hidden">
-                                    <div 
-                                       className="absolute left-0 top-0 h-full bg-teal-500 shadow-[0_0_10px_rgba(20,184,166,0.4)] transition-all duration-100" 
-                                       style={{ width: `${audioProgress}%` }} 
-                                    />
+                                    <div className="absolute left-0 top-0 h-full bg-teal-500 shadow-[0_0_10px_rgba(20,184,166,0.4)] transition-all duration-100" style={{ width: `${audioProgress}%` }} />
                                  </div>
                               </div>
                            </div>
                         </div>
- 
                         <div className="flex flex-col gap-3 w-full max-w-[280px]">
                            <button 
                               onClick={() => startAnalysis(activePassage?.id, currentPassageText)} 
@@ -382,10 +331,7 @@ const RecordingStudio = () => {
                            >
                               PROCEED TO ANALYSIS <ArrowRight size={16} />
                            </button>
-                           <button 
-                              onClick={() => setShowReRecordModal(true)} 
-                              className="h-9 border border-red-500/20 text-red-400 rounded-xl font-black text-[9px] hover:bg-red-500/10 transition-all uppercase tracking-[0.2em] flex items-center justify-center gap-2"
-                           >
+                           <button onClick={() => setShowReRecordModal(true)} className="h-9 border border-red-500/20 text-red-400 rounded-xl font-black text-[9px] hover:bg-red-500/10 transition-all uppercase tracking-[0.2em] flex items-center justify-center gap-2">
                               <RotateCcw size={14} /> Discard & Retake
                            </button>
                         </div>
@@ -394,9 +340,9 @@ const RecordingStudio = () => {
 
                   {status === 'processing' && (
                      <div className="flex-1 flex flex-col items-center justify-center animate-fade-in py-2">
-                        <Loader2 size={32} className="text-[var(--accent)] animate-spin mb-4" />
-                        <h3 className="text-[11px] font-bold text-[var(--text-primary)] mb-1 uppercase tracking-[0.2em]">Analyzing your speech…</h3>
-                        <p className="text-[10px] text-[var(--text-muted)]">This may take up to 2 minutes</p>
+                        <Loader2 size={32} className="text-teal-500 animate-spin mb-4" />
+                        <h3 className="text-[11px] font-bold text-slate-200 mb-1 uppercase tracking-[0.2em]">Analyzing your speech…</h3>
+                        <p className="text-[10px] text-slate-400">This may take up to 2 minutes</p>
                      </div>
                   )}
 
@@ -407,60 +353,16 @@ const RecordingStudio = () => {
                         </div>
                         <h3 className="text-[12px] font-black text-slate-200 mb-1 uppercase tracking-[0.2em]">Analysis Complete</h3>
                         <p className="text-[10px] text-slate-400 mb-6">Your fluency report is ready for review.</p>
-                        <button 
-                           onClick={() => navigate(`/sessions/${sessionId}`)}
-                           className="h-11 px-8 bg-teal-500 text-slate-900 rounded-xl font-black text-[12px] tracking-widest hover:scale-[1.05] active:scale-[0.95] transition-all flex items-center gap-2 justify-center shadow-[0_0_40px_rgba(20,184,166,0.3)]"
-                        >
+                        <button onClick={() => navigate(`/sessions/${sessionId}`)} className="h-11 px-8 bg-teal-500 text-slate-900 rounded-xl font-black text-[12px] tracking-widest hover:scale-[1.05] active:scale-[0.95] transition-all flex items-center gap-2 justify-center shadow-[0_0_40px_rgba(20,184,166,0.3)]">
                            VIEW FULL REPORT <ChevronRight size={18} />
-                        </button>
-                     </div>
-                  )}
-
-                  {status === 'error' && (
-                     <div className="flex-1 flex flex-col items-center justify-center animate-fade-in py-2 relative z-10">
-                        <div className="w-12 h-12 bg-red-500/20 text-red-500 rounded-2xl flex items-center justify-center mb-4">
-                           <X size={24} />
-                        </div>
-                        <h3 className="text-[11px] font-bold text-red-500 mb-1 uppercase tracking-[0.2em]">Analysis Failed</h3>
-                        <p className="text-[10px] text-slate-400 mb-6 text-center max-w-[220px]">
-                           {analysisError || 'We encountered an error while processing your speech. Please try again.'}
-                        </p>
-                        <button 
-                           onClick={resetRecording} 
-                           className="h-10 px-6 rounded-xl border border-red-500/30 text-red-400 font-black text-[10px] hover:bg-red-500/10 transition-all uppercase tracking-widest"
-                        >
-                           Restart Session
                         </button>
                      </div>
                   )}
                </div>
             </div>
 
-            {/* RIGHT PANEL (Balanced & Distributed) */}
+            {/* RIGHT PANEL */}
             <div className="hidden lg:flex flex-col gap-6 h-full overflow-hidden">
-               {/* Weekly Goal */}
-               <div className="bg-[var(--bg-surface)] rounded-2xl p-3 border border-[var(--border-subtle)] shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                     <span className="text-[12px] font-black text-[var(--text-muted)] uppercase tracking-widest">Weekly Goal</span>
-                     <span className="text-[13px] font-black text-[var(--accent)]">57%</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                     <div className="relative inline-flex items-center justify-center shrink-0">
-                        <svg className="w-16 h-16 -rotate-90">
-                           <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="6" fill="transparent" className="text-[var(--border-subtle)]" />
-                           <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray={175.9} strokeDashoffset={175.9 * (1 - 0.57)} className="text-[var(--accent)]" strokeLinecap="round" />
-                        </svg>
-                        <span className="absolute text-[16px] font-black text-[var(--text-primary)]">4/7</span>
-                     </div>
-                     <div className="flex-1">
-                        <div className="w-full h-2 bg-[var(--bg-base)] rounded-full overflow-hidden mb-2">
-                           <div className="h-full bg-[var(--accent)] rounded-full shadow-[0_0_8px_rgba(20,184,166,0.3)]" style={{ width: '57%' }} />
-                        </div>
-                        <p className="text-[12px] text-[var(--text-muted)] leading-tight font-medium">3 sessions left to reach target.</p>
-                     </div>
-                  </div>
-               </div>
-
                {/* This Week Stats */}
                <div className="bg-[var(--bg-surface)] rounded-2xl p-5 border border-[var(--border-subtle)] shadow-sm">
                   <h3 className="text-[12px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-4">This Week</h3>
@@ -481,18 +383,6 @@ const RecordingStudio = () => {
                   </div>
                </div>
 
-               {/* Last Session */}
-               <div className="bg-[var(--bg-surface)] rounded-2xl border border-[var(--border-subtle)] p-4 shadow-sm relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/5 rounded-full -mr-12 -mt-12 blur-2xl group-hover:bg-teal-500/10 transition-colors" />
-                  <div className="flex items-center justify-between">
-                     <div>
-                        <h3 className="text-[11px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-2 leading-none">Last Session</h3>
-                        <p className="text-[14px] font-bold text-[var(--text-secondary)] leading-none">May 08 <span className="text-[12px] text-[var(--text-muted)] font-normal ml-2 italic">1m 32s</span></p>
-                     </div>
-                     <div className="bg-[var(--accent-glow)] text-[var(--accent)] px-3 py-1 rounded-lg text-[11px] font-black">GOOD</div>
-                  </div>
-               </div>
-
                {/* Preparation Tips */}
                <div className="bg-[var(--bg-surface)] rounded-2xl border border-[var(--border-subtle)] p-4 shadow-sm">
                   <h3 className="text-[12px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3">Preparation</h3>
@@ -508,7 +398,7 @@ const RecordingStudio = () => {
                   </div>
                </div>
 
-               {/* Quote - Compact & Vibrant */}
+               {/* Quote */}
                <div className="bg-teal-600 rounded-2xl p-4 relative overflow-hidden group shadow-md">
                   <Quote size={20} className="absolute -left-1 -top-1 text-white/10 -rotate-12" />
                   <p className="text-[15px] font-serif italic leading-tight text-white text-center relative z-10">

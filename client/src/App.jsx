@@ -68,7 +68,7 @@ function App() {
             <Route path="system" element={<AdminPlaceholder title="System Status" description="Monitor server health, API quotas, and database metrics." />} />
             <Route path="settings" element={<AdminPlaceholder title="Admin Settings" description="Configure global platform variables." />} />
           </Route>
-
+          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

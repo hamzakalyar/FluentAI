@@ -24,6 +24,7 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [confirmEmail, setConfirmEmail] = useState('');
   const { user } = useAuth();
+  
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return document.documentElement.getAttribute('data-theme') === 'dark';
@@ -41,6 +42,7 @@ const Settings = () => {
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'password', label: 'Password', icon: Shield },
     { id: 'preferences', label: 'Preferences', icon: Mic2 },
+    { id: 'privacy', label: 'Privacy & Data', icon: Globe },
     { id: 'danger', label: 'Danger Zone', icon: Shield, dangerous: true },
   ];
 
@@ -139,7 +141,9 @@ const Settings = () => {
                       className="w-32 h-32 bg-gradient-to-br from-teal-500/10 to-indigo-500/10 rounded-[2.5rem] flex items-center justify-center relative overflow-hidden cursor-pointer transition-all duration-500 hover:rounded-[1.5rem] hover:shadow-2xl hover:shadow-teal-500/20 border border-white"
                     >
                       <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" />
-                      <span className="text-4xl font-black bg-gradient-to-br from-teal-600 to-indigo-600 bg-clip-text text-transparent relative z-10">HA</span>
+                      <span className="text-4xl font-black bg-gradient-to-br from-teal-600 to-indigo-600 bg-clip-text text-transparent relative z-10">
+                        {user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'HA'}
+                      </span>
                       
                       <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center text-white backdrop-blur-[4px] z-20">
                         <Camera size={28} className="mb-2 animate-in slide-in-from-bottom duration-300" />
@@ -156,7 +160,7 @@ const Settings = () => {
 
                   <div className="flex-1 text-center md:text-left">
                     <div className="flex flex-col md:flex-row md:items-center gap-3 mb-2">
-                      <h3 className="text-3xl font-black text-[var(--text-primary)] font-syne tracking-tight">Hassan Ali</h3>
+                      <h3 className="text-3xl font-black text-[var(--text-primary)] font-syne tracking-tight">{user?.name || 'Hassan Ali'}</h3>
                       <div className="flex justify-center md:justify-start gap-2">
                         <Badge variant="teal" className="py-0.5 px-3 text-[9px] font-black uppercase tracking-wider">Premium</Badge>
                         <Badge variant="outline" className="py-0.5 px-3 text-[9px] font-black uppercase tracking-wider border-indigo-500/20 text-indigo-500 bg-indigo-50/30">Verified</Badge>
@@ -181,15 +185,15 @@ const Settings = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-1">First Name</label>
-                    <Input defaultValue="Hassan" className="bg-[var(--bg-base)] border-none focus:ring-[var(--accent)]/20" />
+                    <Input defaultValue={user?.name?.split(' ')[0] || 'Hassan'} className="bg-[var(--bg-base)] border-none focus:ring-[var(--accent)]/20" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-1">Last Name</label>
-                    <Input defaultValue="Ali" className="bg-[var(--bg-base)] border-none focus:ring-[var(--accent)]/20" />
+                    <Input defaultValue={user?.name?.split(' ').slice(1).join(' ') || 'Ali'} className="bg-[var(--bg-base)] border-none focus:ring-[var(--accent)]/20" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-1">Email Address</label>
-                    <Input defaultValue="hassan@example.com" type="email" className="bg-[var(--bg-base)] border-none focus:ring-[var(--accent)]/20" />
+                    <Input defaultValue={user?.email || 'hassan@example.com'} type="email" className="bg-[var(--bg-base)] border-none focus:ring-[var(--accent)]/20" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-1">Phone Number</label>
@@ -325,6 +329,41 @@ const Settings = () => {
               </motion.div>
             )}
 
+            {activeTab === 'privacy' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10 p-2">
+                <div>
+                  <h3 className="text-2xl font-black text-[var(--text-primary)] font-syne mb-2">Privacy & Data</h3>
+                  <p className="text-base text-[var(--text-secondary)] font-medium">Manage how your speech data is handled</p>
+                </div>
+                
+                <div className="space-y-6">
+                  <div className="p-6 bg-[var(--bg-base)] rounded-[2rem] border border-[var(--border-subtle)] flex items-center justify-between group hover:border-[var(--accent)]/30 transition-all">
+                    <div>
+                      <p className="font-bold text-[var(--text-primary)] text-sm">Data Anonymization</p>
+                      <p className="text-xs text-[var(--text-secondary)] mt-1">Remove personal identifiers from recordings</p>
+                    </div>
+                    <div className="w-12 h-6 bg-[var(--accent)] rounded-full relative p-1.5 shadow-lg shadow-[var(--accent)]/20">
+                      <div className="w-3 h-3 bg-white rounded-full translate-x-6" />
+                    </div>
+                  </div>
+
+                  <div className="p-6 bg-[var(--bg-base)] rounded-[2rem] border border-[var(--border-subtle)] flex items-center justify-between group hover:border-[var(--accent)]/30 transition-all">
+                    <div>
+                      <p className="font-bold text-[var(--text-primary)] text-sm">Research Participation</p>
+                      <p className="text-xs text-[var(--text-secondary)] mt-1">Help improve the AI with anonymous data</p>
+                    </div>
+                    <div className="w-12 h-6 bg-slate-200 rounded-full relative p-1.5 transition-all">
+                      <div className="w-3 h-3 bg-white rounded-full translate-x-0" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-10 mt-10 border-t border-[var(--border-subtle)]">
+                   <Button variant="ghost" className="text-red-500 hover:bg-red-50">Download All My Data (.JSON)</Button>
+                </div>
+              </motion.div>
+            )}
+
             {activeTab === 'danger' && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10 p-2">
                 <div>
@@ -346,7 +385,7 @@ const Settings = () => {
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-red-500/60 uppercase tracking-[0.2em]">To confirm, type your email address below</label>
                         <Input 
-                          placeholder="hassan@example.com" 
+                          placeholder={user?.email || "hassan@example.com"} 
                           value={confirmEmail}
                           onChange={(e) => setConfirmEmail(e.target.value)}
                           className="bg-[var(--bg-base)] border-red-500/30 focus:border-red-500 focus:ring-red-500/10 max-w-md h-12 text-[var(--text-primary)]" 

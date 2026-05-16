@@ -22,8 +22,14 @@ import {
   Settings,
   Layout,
   Mic,
+  Info,
+  RefreshCw,
+  User
 } from 'lucide-react';
 import Breadcrumb from '../components/layout/Breadcrumb';
+import Card from '../components/shared/Card';
+import Button from '../components/shared/Button';
+import { motion } from 'framer-motion';
 
 // ── Static chat history ──────────────────────────────────────────────────────
 const HISTORY_ITEMS = [
@@ -31,26 +37,6 @@ const HISTORY_ITEMS = [
   { id: 2, icon: BookOpen, title: 'Tuesday Practice Tips', sub: 'Yesterday', color: 'text-amber-500', bg: 'bg-amber-500/10' },
   { id: 3, icon: Waves, title: 'Phoneme Analysis', sub: 'May 12', color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
   { id: 4, icon: Target, title: 'Goal Setting Session', sub: 'May 10', color: 'text-rose-500', bg: 'bg-rose-500/10' },
-];
-
-// ── Right-panel data (mirrors RecordingStudio right panel style) ─────────────
-const SESSION_ANALYTICS = [
-  { icon: Activity, label: 'Stability', val: '92.0%', iconColor: 'text-teal-500', valColor: 'text-teal-600' },
-  { icon: Zap, label: 'Resonance', val: 'Optimal', iconColor: 'text-amber-500', valColor: 'text-[var(--text-primary)]' },
-  { icon: Target, label: 'Modality', val: 'Fluency', iconColor: 'text-indigo-500', valColor: 'text-[var(--text-primary)]' },
-];
-
-const SUGGESTED_ACTIONS = [
-  { icon: ClipboardList, label: 'Generate Exercise Plan' },
-  { icon: Waves, label: 'Analyze Latency Jitter' },
-  { icon: FileText, label: 'Export Clinical Summary' },
-  { icon: BarChart2, label: 'Week-over-Week Report' },
-];
-
-const MODEL_INFO = [
-  { key: 'Model version', val: 'C3-Clinical' },
-  { key: 'Sessions analyzed', val: '14' },
-  { key: 'Context window', val: '4 sessions' },
 ];
 
 // ── Suggestion chips ─────────────────────────────────────────────────────────
@@ -95,7 +81,6 @@ const AI_RESPONSES = [
   'Your block events dropped from 7 to 3 this week. The targeted /p/ exercises are working. Shall I generate a new difficulty level for tomorrow?',
 ];
 
-// ════════════════════════════════════════════════════════════════════════════
 const AiAssistant = () => {
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
@@ -104,14 +89,11 @@ const AiAssistant = () => {
   const chatEndRef = useRef(null);
   const aiResponseIndex = useRef(0);
 
-  // ── FIX: Ensure page starts at top on mount ────────────────────────────────
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
-  // Auto-scroll on new message
   useEffect(() => {
-    // We only want to scroll the chat container, not the window
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [messages, isTyping]);
 
@@ -151,7 +133,6 @@ const AiAssistant = () => {
     sendMessage();
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="animate-fade-in-up relative h-[calc(100vh-130px)] transition-colors duration-300 overflow-hidden flex flex-col">
       {/* Background Decor - Ultra Minimal */}
@@ -322,7 +303,6 @@ const AiAssistant = () => {
               <ShieldCheck size={12} className="text-teal-500" />
               <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest">End-to-End Encrypted</span>
             </div>
-
           </div>
         </div>
       </div>

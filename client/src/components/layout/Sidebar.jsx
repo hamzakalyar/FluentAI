@@ -11,7 +11,6 @@ import {
   Bot
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
-
 import { useAuth } from '../../context/AuthContext';
  
 const Sidebar = ({ isOpen, toggleSidebar }) => {
@@ -41,7 +40,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       }`}
     >
       {/* ── LOGO ZONE ── */}
-      <div className="h-[var(--topbar-height)] flex items-center px-4 border-b border-white/[0.05] relative bg-white/[0.01]">
+      <div className="h-[64px] flex items-center px-4 border-b border-white/[0.05] relative bg-white/[0.01]">
         <button 
           onClick={() => navigate('/dashboard')}
           className="flex items-center hover:opacity-80 transition-all duration-300 cursor-pointer group"
