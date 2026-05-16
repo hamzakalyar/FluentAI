@@ -2,8 +2,8 @@ import os
 import sys
 import torch
 from torch import nn
-import torchaudio
-import torchaudio.transforms as T
+import librosa
+import re
 
 # Add stutter-solver to path so utils can be imported
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -23,6 +23,59 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 _hps = None
 _net_g = None
 _decoder = None
+
+def _torch_load_checkpoint(checkpoint_path, map_location):
+    try:
+        return torch.load(checkpoint_path, map_location=map_location, weights_only=False)
+    except TypeError:
+        return torch.load(checkpoint_path, map_location=map_location)
+
+def _sanitize_text_for_vits(text):
+    """
+    Remove characters not in the VITS symbol set to prevent KeyError.
+    The VITS model only knows: _pad + punctuation (;:,.!?¡¿—…\"«»"" ) + letters (A-Za-z) + IPA.
+    """
+    allowed = set(symbols)
+    text = text.replace('-', ' ')
+    text = text.replace('–', ' ')
+    text = text.replace('—', ' ')
+    text = text.replace('/', ' ')
+    text = text.replace('(', ' ')
+    text = text.replace(')', ' ')
+    text = text.replace('[', ' ')
+    text = text.replace(']', ' ')
+    text = text.replace('{', ' ')
+    text = text.replace('}', ' ')
+    text = text.replace('&', ' and ')
+    text = text.replace('@', ' at ')
+    text = text.replace('#', ' ')
+    text = text.replace('$', ' ')
+    text = text.replace('%', ' percent ')
+    text = text.replace('+', ' plus ')
+    text = text.replace('=', ' ')
+    text = text.replace('*', ' ')
+    text = text.replace('~', ' ')
+    text = text.replace('`', ' ')
+    text = text.replace('^', ' ')
+    text = text.replace('|', ' ')
+    text = text.replace('\\', ' ')
+    text = text.replace('<', ' ')
+    text = text.replace('>', ' ')
+    
+    digit_words = {'0': 'zero', '1': 'one', '2': 'two', '3': 'three', '4': 'four',
+                   '5': 'five', '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine'}
+    for digit, word in digit_words.items():
+        text = text.replace(digit, f' {word} ')
+    
+    cleaned = []
+    for ch in text:
+        if ch in allowed:
+            cleaned.append(ch)
+        else:
+            cleaned.append(' ')
+    text = ''.join(cleaned)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
 
 def load_stutter_solver_models():
     global _hps, _net_g, _decoder
@@ -44,11 +97,12 @@ def load_stutter_solver_models():
     utils.load_checkpoint(pretrained_path, _net_g, None)
     
     decoder_path = os.path.join(current_dir, "Stutter-Solver", "saved_models", "stutter_solver.pth")
-    _decoder = torch.load(decoder_path, map_location=device)
+    _decoder = _torch_load_checkpoint(decoder_path, map_location=device)
     _decoder.eval()
     print("Stutter-Solver models loaded successfully.")
 
 def get_text(text, hps):
+    text = _sanitize_text_for_vits(text)
     text_norm = text_to_sequence(text, hps.data.text_cleaners)
     if hps.data.add_blank:
         text_norm = commons.intersperse(text_norm, 0)
@@ -62,22 +116,15 @@ def get_audio_spec(filename):
     _hop_length = 256
     _win_length = 1024
 
-    audio, sampling_rate = torchaudio.load(filename)
-    if sampling_rate != _sampling_rate:
-        resampler = T.Resample(orig_freq=sampling_rate, new_freq=_sampling_rate)
-        audio = resampler(audio)
-    
-    # average channels if multi-channel
-    if audio.shape[0] > 1:
-        audio = torch.mean(audio, dim=0, keepdim=True)
+    audio, _ = librosa.load(filename, sr=_sampling_rate, mono=True)
+    audio = torch.from_numpy(audio).float()
 
-    max_val = torch.max(torch.abs(audio))
-    if max_val == 0:
-        max_val = 1.0  # Prevent division by zero for silent audio
-    normalized_waveform = audio / max_val
-    audio = normalized_waveform * 32767
-    audio_norm = audio / _max_wav_value
-    audio_norm = audio_norm.unsqueeze(0).to(device)
+    peak = torch.max(torch.abs(audio))
+    if peak > 0:
+        audio = audio / peak
+
+    audio = audio * 32767
+    audio_norm = (audio / _max_wav_value).unsqueeze(0).to(device)
 
     spec = spectrogram_torch(
         audio_norm,
@@ -93,7 +140,6 @@ def get_audio_spec(filename):
 def predict_stutters(audio_path, transcript_text):
     """
     Runs Stutter-Solver inference to detect dysfluencies in audio given the transcript.
-    Returns a list of dicts: {"type": str, "start": float, "end": float, "confidence": float}
     """
     load_stutter_solver_models()
     
@@ -101,7 +147,6 @@ def predict_stutters(audio_path, transcript_text):
         return []
         
     spec = get_audio_spec(audio_path)
-    
     stn_tst = get_text(transcript_text, _hps)
     x_tst = stn_tst.unsqueeze(0).to(device)
     x_tst_lengths = torch.LongTensor([stn_tst.size(0)]).to(device)
@@ -113,7 +158,6 @@ def predict_stutters(audio_path, transcript_text):
         o, l_length, (neg_cent, attn), ids_slice, x_mask, y_mask, _ = _net_g(x_tst, x_tst_lengths, y, y_lengths)
         soft_attention = nn.functional.softmax(neg_cent, dim=-1)
 
-    # Pad soft_attention to [batch, 1024, 768] expected by decoder
     pad_dim1 = 768 - soft_attention.shape[-1]
     pad_dim2 = 1024 - soft_attention.shape[-2]
     
@@ -139,7 +183,7 @@ def predict_stutters(audio_path, transcript_text):
     
     for i in range(max_region):
         exists_pred = torch.clamp(output[0, i, 2], 0, 1)
-        if exists_pred > 0.85:  # Increased threshold to prevent false positives
+        if exists_pred > 0.8:  # Balanced threshold for accuracy
             disf_type_pred = output[0, i, 3:]
             type_idx = torch.argmax(disf_type_pred).item()
             start_norm = output[0, i, 0].item()

@@ -15,18 +15,19 @@ const router = express.Router();
 
 /**
  * GET /api/analytics/summary
- * 
- * Returns the high-level summary stats for the main dashboard.
+ * Returns total sessions, average score, latest score, trend, and top weak sounds.
  */
 router.get('/summary', auth, async (req, res) => {
   try {
     const sessions = await Session.find({ user: req.user._id, status: 'completed' })
+      .select('metrics.fluencyScore metrics.speechRateWPM metrics.repetitionCount metrics.pauseCount metrics.fillerCount weakSoundsDetected createdAt')
       .sort({ createdAt: -1 });
 
     if (sessions.length === 0) {
       return res.json({
         totalSessions: 0,
         averageFluencyScore: 0,
+        latestFluencyScore: 0,
         avgSpeechRate: 0,
         avgRepetitions: 0,
         improvementTrend: 'no_data',
@@ -42,7 +43,7 @@ router.get('/summary', auth, async (req, res) => {
     const avgWPM = Math.round(sessions.reduce((sum, s) => sum + (s.metrics?.speechRateWPM || 0), 0) / totalSessions);
     const avgReps = (sessions.reduce((sum, s) => sum + (s.metrics?.repetitionCount || 0), 0) / totalSessions).toFixed(1);
 
-    // Comparative Trends (Last 7 days vs Previous 7 days)
+    // Improvement Trend (Last 7 days vs Previous 7 days)
     const now = new Date();
     const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const prevWeek = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
@@ -58,7 +59,6 @@ router.get('/summary', auth, async (req, res) => {
       repetitions: prevWeekSessions.length > 0 ? Math.round(((calculateAvg(thisWeekSessions, 'repetitionCount') - calculateAvg(prevWeekSessions, 'repetitionCount')) / calculateAvg(prevWeekSessions, 'repetitionCount')) * 100) : 0
     };
 
-    // Improvement Trend based on fluency score
     let improvementTrend = 'stable';
     if (totalSessions >= 4) {
       const recent = sessions.slice(0, 2).reduce((sum, s) => sum + (s.metrics?.fluencyScore || 0), 0) / 2;
@@ -67,15 +67,13 @@ router.get('/summary', auth, async (req, res) => {
       else if (recent < older - 5) improvementTrend = 'declining';
     }
 
-    // Top Weak Sounds (from user profile)
     const user = await User.findById(req.user._id);
-    const topWeakSounds = (user.weakSounds || [])
-      .sort((a, b) => b.frequency - a.frequency)
-      .slice(0, 3);
+    const topWeakSounds = (user.weakSounds || []).sort((a, b) => b.frequency - a.frequency).slice(0, 5);
 
     res.json({
       totalSessions,
       averageFluencyScore: avgFluency,
+      latestFluencyScore: sessions[0]?.metrics?.fluencyScore || 0,
       avgSpeechRate: avgWPM,
       avgRepetitions: parseFloat(avgReps),
       improvementTrend,
@@ -85,23 +83,20 @@ router.get('/summary', auth, async (req, res) => {
         id: s._id.toString(),
         date: s.createdAt,
         fluencyScore: s.metrics?.fluencyScore,
-        wpm: s.metrics?.speechRateWPM
+        speechRateWPM: s.metrics?.speechRateWPM
       })),
       latestSession: sessions[0]
     });
-
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch summary analytics', error: error.message });
   }
 });
 
 /**
- * GET /api/analytics/historical
- * 
- * Returns data points for Recharts charts.
- * Query params: timeframe (7d, 30d, 90d)
+ * GET /api/analytics/historical OR /api/analytics/trend
+ * Unified endpoint for charting.
  */
-router.get('/historical', auth, async (req, res) => {
+router.get(['/historical', '/trend'], auth, async (req, res) => {
   try {
     const { timeframe = '7d' } = req.query;
     let days = 7;
@@ -116,23 +111,20 @@ router.get('/historical', auth, async (req, res) => {
       status: 'completed',
       createdAt: { $gte: startDate }
     })
-    .sort({ createdAt: 1 }) // Chronological order for charts
+    .sort({ createdAt: 1 })
     .select('metrics.fluencyScore metrics.speechRateWPM metrics.repetitionCount metrics.pauseCount createdAt');
 
     const chartData = sessions.map(s => ({
       name: new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       score: s.metrics?.fluencyScore || 0,
+      value: s.metrics?.fluencyScore || 0, // for generic 'value' consumers
       wpm: s.metrics?.speechRateWPM || 0,
       repetitions: s.metrics?.repetitionCount || 0,
       pauses: s.metrics?.pauseCount || 0,
       date: s.createdAt
     }));
 
-    res.json({
-      timeframe,
-      data: chartData
-    });
-
+    res.json({ timeframe, data: chartData });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch historical analytics', error: error.message });
   }
@@ -140,7 +132,6 @@ router.get('/historical', auth, async (req, res) => {
 
 /**
  * GET /api/analytics/weak-sounds
- * 
  * Aggregated progress per sound from PracticeResults.
  */
 router.get('/weak-sounds', auth, async (req, res) => {
@@ -158,32 +149,21 @@ router.get('/weak-sounds', auth, async (req, res) => {
       { $sort: { totalAttempts: -1 } }
     ]);
 
+    const user = await User.findById(req.user._id).select('weakSounds');
+    const profileWeakSounds = user?.weakSounds || [];
+
     const formattedProgress = soundProgress.map(sp => ({
       sound: sp._id,
       score: Math.round(sp.avgScore),
       totalAttempts: sp.totalAttempts,
       lastAttempt: sp.lastAttempt,
-      color: _getSoundColor(sp._id)
+      frequency: profileWeakSounds.find(p => p.sound === sp._id)?.frequency || 0
     }));
 
-    res.json({ soundProficiency: formattedProgress });
-
+    res.json({ soundProficiency: formattedProgress, weakSounds: profileWeakSounds });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch sound analytics', error: error.message });
   }
 });
-
-// Helper for UI colors
-function _getSoundColor(sound) {
-  const colors = {
-    'S': '#0D9488',
-    'R': '#F59E0B',
-    'TH': '#3B82F6',
-    'L': '#8B5CF6',
-    'K': '#EF4444',
-    'B': '#10B981'
-  };
-  return colors[sound.toUpperCase()] || '#6366F1';
-}
 
 module.exports = router;

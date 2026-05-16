@@ -51,7 +51,7 @@ const sessionSchema = new mongoose.Schema({
     }],
     fillers: [String],
     detectedStutters: [{
-      type: { type: String, enum: ['repetition', 'pause', 'filler'] },
+      type: { type: String },
       word: String,
       position: Number
     }]
