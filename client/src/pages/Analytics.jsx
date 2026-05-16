@@ -67,10 +67,10 @@ const Analytics = () => {
       <div className="mb-10">
         <Breadcrumb />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-2">
-          <div>
-            <h1 className="text-4xl font-black text-[var(--text-primary)] tracking-tight font-syne">Speech Analytics</h1>
-            <p className="text-[var(--text-secondary)] font-medium text-lg mt-2">Deep dive into your fluency patterns and progress</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-black text-[var(--text-primary)] tracking-tight font-syne">Speech Analytics</h1>
+          <p className="text-[var(--text-secondary)] font-medium text-sm mt-2">Deep dive into your fluency patterns and progress</p>
+        </div>
         </div>
       </div>
 

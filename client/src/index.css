@@ -11,41 +11,51 @@
 
 :root {
   /* Backgrounds */
-  --bg-base:        #F1F5F9;   /* slightly deeper slate for better card contrast */
-  --bg-surface:     #FFFFFF;   /* pure white cards */
-  --bg-elevated:    #FFFFFF;   
-  --bg-gradient:    linear-gradient(145deg, #F8FAFC 0%, #F1F5F9 100%);
-  
+  --bg-base: #F1F5F9;
+  /* slightly deeper slate for better card contrast */
+  --bg-surface: #FFFFFF;
+  /* pure white cards */
+  --bg-elevated: #FFFFFF;
+  --bg-gradient: linear-gradient(145deg, #F8FAFC 0%, #F1F5F9 100%);
+
   /* Brand Palette — Institutional Navy & Mint */
-  --accent:         #0D9488;   /* Clinical Mint */
-  --accent-navy:    #0B0E14;   /* Deep Midnight Charcoal */
-  --accent-glow:    #F0FDF9;   /* soft mint background */
-  --accent-border:  rgba(13, 148, 136, 0.20);
-  
+  --accent: #0D9488;
+  /* Clinical Mint */
+  --accent-navy: #0B0E14;
+  /* Deep Midnight Charcoal */
+  --accent-glow: #F0FDF9;
+  /* soft mint background */
+  --accent-border: rgba(13, 148, 136, 0.20);
+
   /* Data Semantics (Emotional Design: No Red) */
-  --success:        #0D9488;   
-  --warning:        #F59E0B;   /* Amber for alerts */
-  --info:           #3B82F6;
+  --success: #0D9488;
+  --warning: #F59E0B;
+  /* Amber for alerts */
+  --info: #3B82F6;
 
   /* Text Hierarchy */
-  --text-primary:   #0F172A;   /* Navy for headings */
-  --text-secondary: #475569;   
-  --text-muted:     #94A3B8;   
-  --text-tertiary:  #64748B;   /* Neutral for secondary info */
+  --text-primary: #0F172A;
+  /* Navy for headings */
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+  --text-tertiary: #64748B;
+  /* Neutral for secondary info */
 
   /* Borders & Shadows (Premium Softness) */
-  --border-subtle:  rgba(15, 23, 42, 0.06);
-  --shadow-card:    0 10px 25px -5px rgba(15, 23, 42, 0.04), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  --border-subtle: rgba(15, 23, 42, 0.06);
+  --shadow-card: 0 10px 25px -5px rgba(15, 23, 42, 0.04), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
   --shadow-premium: 0 20px 40px -12px rgba(15, 23, 42, 0.08);
 
   /* DASHBOARD GRID SYSTEM (Audit Fix) */
   --page-padding: 16px;
+
   @media (min-width: 768px) {
     --page-padding: 32px;
   }
+
   --section-gap: 24px;
   --topbar-height: 64px;
-  --hero-bg:        var(--accent);
+  --hero-bg: var(--accent);
 
   /* Recording Studio Specialized Theme (Scaffolded) */
   --studio-bg: #070C18;
@@ -57,45 +67,55 @@
   --studio-text: #E8F0FE;
   --studio-text-sec: #7A8FAF;
   --studio-text-ter: #3D5070;
-  --studio-border: rgba(255,255,255,0.06);
+  --studio-border: rgba(255, 255, 255, 0.06);
   --studio-danger: #EF4444;
   --studio-warn: #F59E0B;
 }
 
 /* ── GLOBAL DARK THEME ── */
 [data-theme='dark'] {
-  --bg-base:        #070C18;
-  --bg-surface:     #0D1525;
-  --bg-elevated:    #131E30;
-  
-  --text-primary:   #FFFFFF;
+  --bg-base: #070C18;
+  --bg-surface: #0D1525;
+  --bg-elevated: #131E30;
+
+  --text-primary: #FFFFFF;
   --text-secondary: #E2E8F0;
-  --text-muted:     #94A3B8;
-  --text-tertiary:  #CBD5E1;
-  
-  --border-subtle:  rgba(255, 255, 255, 0.1);
-  --shadow-card:    0 20px 40px -15px rgba(0, 0, 0, 0.7);
-  
-  --accent-glow:    rgba(13, 148, 136, 0.05);
-  --accent-border:  rgba(13, 148, 136, 0.2);
-  --hero-bg:        linear-gradient(135deg, #0D9488 0%, #042F2E 100%);
+  --text-muted: #94A3B8;
+  --text-tertiary: #CBD5E1;
+
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --shadow-card: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+
+  --accent-glow: rgba(13, 148, 136, 0.05);
+  --accent-border: rgba(13, 148, 136, 0.2);
+  --hero-bg: linear-gradient(135deg, #0D9488 0%, #042F2E 100%);
 }
 
 .studio-theme {
-  --bg-base:        #070C18;
-  --bg-surface:     #0D1525;
-  --bg-elevated:    #131E30;
-  --text-primary:   #FFFFFF;
+  --bg-base: #070C18;
+  --bg-surface: #0D1525;
+  --bg-elevated: #131E30;
+  --text-primary: #FFFFFF;
   --text-secondary: #E2E8F0;
-  --border-subtle:  rgba(255, 255, 255, 0.1);
+  --border-subtle: rgba(255, 255, 255, 0.1);
 }
 
-.font-syne { font-family: var(--font-syne); }
-.font-mono { font-family: var(--font-mono); }
+.font-syne {
+  font-family: var(--font-syne);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
 
 @keyframes shimmer {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(100%); }
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
 }
 
 .animate-shimmer {
@@ -103,38 +123,73 @@
 }
 
 @layer base {
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     background-color: var(--bg-base);
     color: var(--text-secondary);
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  header, aside, main, section, div, button, input {
+    transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
 /* Scrollbar styling for pro look */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--bg-base); }
-::-webkit-scrollbar-thumb { background: var(--bg-surface); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-surface);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
 
 @layer utilities {
+
   /* ── Hero background ─── */
   .hero-gradient {
-    background: linear-gradient(135deg, #DDFAF5 0%, #EDF9F7 30%, #F5FFFE 60%, #FFFFFF 100%);
+    background: #ECFEFF;
   }
 
   /* ── CTA background ─── */
   .cta-gradient {
-    background: linear-gradient(135deg, #DDFAF5 0%, #E8FDFB 40%, #F0FFFE 100%);
+    background: #ECFEFF;
   }
 
   /* ── Progress bar fill animation ─── */
   @keyframes fillBar {
-    from { width: 0; }
-    to   { width: var(--bar-w); }
+    from {
+      width: 0;
+    }
+
+    to {
+      width: var(--bar-w);
+    }
   }
+
   .bar-fill {
     animation: fillBar 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
   }
@@ -143,10 +198,14 @@
   .reveal {
     opacity: 0;
     transform: translateY(22px);
-    transition: opacity 0.65s cubic-bezier(0.22,1,0.36,1),
-                transform 0.65s cubic-bezier(0.22,1,0.36,1);
+    transition: opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
   }
-  .reveal.visible { opacity: 1; transform: none; }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: none;
+  }
 
   /* ── Workflow connector line ─── */
   .step-line {

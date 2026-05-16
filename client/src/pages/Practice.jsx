@@ -205,8 +205,8 @@ const Practice = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <Breadcrumb />
-            <h1 className="text-4xl font-black text-[var(--text-primary)] tracking-tight font-syne">Practice Engine</h1>
-            <p className="text-[var(--text-secondary)] font-medium mt-2 text-lg">Daily exercises tailored to your fluency patterns</p>
+            <h1 className="text-2xl font-black text-[var(--text-primary)] tracking-tight font-syne">Practice Engine</h1>
+            <p className="text-[var(--text-secondary)] font-medium mt-2 text-sm">Daily exercises tailored to your fluency patterns</p>
           </div>
           <div className="flex items-center gap-5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-3xl p-4 shadow-sm">
             <div className="text-center px-1">
@@ -229,7 +229,7 @@ const Practice = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* Exercises List */}
         <div className="lg:col-span-2 space-y-8">
           {exercises.map((ex) => (
@@ -240,10 +240,13 @@ const Practice = () => {
               isInitiallyCompleted={completedIds.includes(ex.id)}
             />
           ))}
+          
+          {/* Bottom padding to allow full scroll of the last item */}
+          <div className="h-20" />
         </div>
-
-        {/* Info & Goals */}
-        <div className="space-y-8">
+ 
+        {/* Info & Goals (Sticky Sidebar) */}
+        <div className="lg:sticky lg:top-24 space-y-8">
           <div className="p-6 rounded-3xl bg-[var(--accent-navy)] text-white shadow-premium relative overflow-hidden group border border-white/5">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:scale-125 transition-transform duration-1000" />
             <h3 className="font-black text-xl mb-5 flex items-center gap-3 relative z-10 font-syne uppercase tracking-tighter">
@@ -264,7 +267,7 @@ const Practice = () => {
               </div>
             </div>
           </div>
-
+ 
           <Card>
             <h4 className="font-bold text-[var(--text-primary)] mb-4">Milestone Progress</h4>
             <div className="space-y-4">
@@ -272,21 +275,33 @@ const Practice = () => {
                 { label: 'Fluency Master', current: 4, target: 10, icon: '🏆' },
                 { label: 'Practice Streak', current: 7, target: 14, icon: '🔥' },
               ].map((m) => (
-                <div key={m.label} className="p-4 bg-[var(--bg-base)] rounded-2xl">
+                <div key={m.label} className="p-4 bg-[var(--bg-base)] rounded-2xl transition-all hover:bg-[var(--bg-elevated)] group/ms">
                   <div className="flex justify-between mb-2">
                     <span className="text-xs font-bold text-[var(--text-primary)]">{m.icon} {m.label}</span>
                     <span className="text-xs font-bold text-[var(--text-muted)]">{m.current}/{m.target}</span>
                   </div>
                   <div className="h-1.5 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
-                    <div 
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(m.current / m.target) * 100}%` }}
                       className="h-full bg-[var(--accent)]" 
-                      style={{ width: `${(m.current / m.target) * 100}%` }}
                     />
                   </div>
                 </div>
               ))}
             </div>
           </Card>
+
+          {/* Quick Tip / Engagement Card */}
+          <div className="p-5 rounded-3xl bg-[var(--bg-surface)] border border-dashed border-[var(--border-subtle)] flex items-center gap-4 group cursor-help hover:bg-[var(--bg-base)] transition-all">
+             <div className="w-10 h-10 rounded-full bg-teal-500/10 text-teal-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <Zap size={20} fill="currentColor" />
+             </div>
+             <div>
+                <p className="text-[11px] font-black text-[var(--text-primary)] uppercase tracking-wider">Pro Tip</p>
+                <p className="text-[10px] text-[var(--text-muted)] font-medium">Recordings with background noise can affect analysis accuracy.</p>
+             </div>
+          </div>
         </div>
       </div>
     </div>

@@ -22,35 +22,33 @@ const RecentSessions = () => {
       {/* Session Rows */}
       <div className="space-y-0">
         {SESSIONS.map((session, i) => (
-          <div 
+          <div
             key={session.id}
-            className={`flex items-center h-[56px] px-2 -mx-2 cursor-pointer group transition-all hover:bg-[var(--bg-base)] rounded-lg ${
-              i !== SESSIONS.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''
-            }`}
+            className={`flex items-center h-[56px] px-2 -mx-2 cursor-pointer group transition-all hover:bg-[var(--bg-base)] rounded-lg ${i !== SESSIONS.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''
+              }`}
           >
             {/* Left: Icon */}
             <div className="w-8 h-8 rounded-full bg-[var(--bg-base)] flex items-center justify-center text-[var(--text-muted)] shrink-0">
-               <session.Icon size={14} />
+              <session.Icon size={14} />
             </div>
 
             {/* Middle: Info */}
             <div className="flex-1 mx-3 min-w-0">
-               <p className="text-[13px] font-bold text-[var(--text-primary)] truncate">{session.name}</p>
-               <p className="text-[11px] font-mono text-[var(--text-tertiary)] uppercase tracking-tighter">
-                  {session.date} — {session.duration}
-               </p>
+              <p className="text-[13px] font-bold text-[var(--text-primary)] truncate">{session.name}</p>
+              <p className="text-[11px] font-mono text-[var(--text-tertiary)] uppercase tracking-tighter">
+                {session.date} — {session.duration}
+              </p>
             </div>
 
             {/* Right: Score + Chevron */}
             <div className="flex items-center gap-2">
-               <span className={`px-2.5 py-0.5 rounded-full text-[12px] font-bold ${
-                  session.score >= 80 ? 'bg-[var(--accent-glow)] text-[var(--accent)]' :
-                  session.score >= 60 ? 'bg-amber-500/10 text-amber-500' :
+              <span className={`px-2.5 py-0.5 rounded-full text-[12px] font-bold ${session.score >= 80 ? 'bg-[var(--accent-glow)] text-[var(--accent)]' :
+                session.score >= 60 ? 'bg-amber-500/10 text-amber-500' :
                   'bg-red-500/10 text-red-500'
-               }`}>
-                  {session.score}%
-               </span>
-               <ChevronRight size={14} className="text-[var(--text-tertiary)] group-hover:translate-x-1 transition-transform" />
+                }`}>
+                {session.score}%
+              </span>
+              <ChevronRight size={14} className="text-[var(--text-tertiary)] group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
         ))}

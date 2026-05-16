@@ -95,7 +95,7 @@ function StyledInput({ error, ...props }) {
 }
 
 /* ═══════════════════════════════════════ */
-const RegisterPage = () => {
+const RegisterPage = ({ isUnified = false }) => {
   const [step,       setStep]       = useState(1);
   const [isLoading,  setIsLoading]  = useState(false);
   const [userEmail,  setUserEmail]  = useState('');
@@ -120,26 +120,24 @@ const RegisterPage = () => {
     }
   };
 
-  return (
-    <AuthLayout
-      title={step === 1 ? 'Create your account' : 'Check your inbox'}
-      subtitle={step === 1 ? 'Start your fluency journey today — it\'s free' : `We sent a verification link to ${userEmail}`}
-    >
-
+  const formContent = (
+    <>
       {/* ── Step indicator ── */}
       {step === 1 && (
-        <div className="flex items-center gap-2 mb-7">
+        <div className="flex items-center gap-2 mb-8">
           {[1, 2].map((s, i) => (
             <React.Fragment key={s}>
               <div
-                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all shadow-sm"
                 style={{
-                  background: step >= s ? T.teal : '#F3F4F6',
-                  color:      step >= s ? '#fff'  : T.muted,
+                  background: step >= s ? T.teal : '#F1F5F9',
+                  color:      step >= s ? '#fff'  : '#94A3B8',
                 }}
               >{s}</div>
               {i === 0 && (
-                <div className="flex-1 h-0.5 rounded-full" style={{ background: step >= 2 ? T.teal : '#E5E7EB' }} />
+                <div className="flex-1 h-1 rounded-full bg-slate-100 overflow-hidden">
+                   <div className="h-full transition-all duration-500" style={{ width: step >= 2 ? '100%' : '0%', background: T.teal }} />
+                </div>
               )}
             </React.Fragment>
           ))}
@@ -148,26 +146,28 @@ const RegisterPage = () => {
 
       {/* ── Step 1: Registration form ── */}
       {step === 1 && (
-        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
 
           {/* Full name */}
           <Field label="Full name" error={errors.name?.message}>
-            <StyledInput
+            <input
               {...register('name')}
-              placeholder="Hassan Ali"
+              placeholder="Enter your full name"
               autoComplete="name"
-              error={errors.name?.message}
+              className="w-full h-12 px-4 rounded-xl text-sm outline-none transition-all border border-slate-200 focus:border-teal-500/40 focus:ring-4 focus:ring-teal-500/5"
+              style={{ color: T.navy, background: '#fff' }}
             />
           </Field>
 
           {/* Email */}
           <Field label="Email address" error={errors.email?.message}>
-            <StyledInput
+            <input
               {...register('email')}
               type="email"
               placeholder="name@example.com"
               autoComplete="email"
-              error={errors.email?.message}
+              className="w-full h-12 px-4 rounded-xl text-sm outline-none transition-all border border-slate-200 focus:border-teal-500/40 focus:ring-4 focus:ring-teal-500/5"
+              style={{ color: T.navy, background: '#fff' }}
             />
           </Field>
 
@@ -179,14 +179,8 @@ const RegisterPage = () => {
                 type={showPass ? 'text' : 'password'}
                 placeholder="Min. 8 characters"
                 autoComplete="new-password"
-                className="w-full h-12 px-4 pr-12 rounded-xl text-sm outline-none transition-all"
-                style={{
-                  border: `1.5px solid ${errors.password ? T.error : T.border}`,
-                  color: T.text,
-                  background: '#fff',
-                }}
-                onFocus={e => { if (!errors.password) e.target.style.borderColor = T.teal; e.target.style.boxShadow = '0 0 0 3px rgba(13,148,136,0.10)'; }}
-                onBlur={e  => { e.target.style.borderColor = errors.password ? T.error : T.border; e.target.style.boxShadow = 'none'; }}
+                className="w-full h-12 px-4 pr-12 rounded-xl text-sm outline-none transition-all border border-slate-200 focus:border-teal-500/40 focus:ring-4 focus:ring-teal-500/5"
+                style={{ color: T.navy, background: '#fff' }}
               />
               <button
                 type="button"
@@ -209,14 +203,8 @@ const RegisterPage = () => {
                 type={showConf ? 'text' : 'password'}
                 placeholder="••••••••"
                 autoComplete="new-password"
-                className="w-full h-12 px-4 pr-12 rounded-xl text-sm outline-none transition-all"
-                style={{
-                  border: `1.5px solid ${errors.confirmPassword ? T.error : T.border}`,
-                  color: T.text,
-                  background: '#fff',
-                }}
-                onFocus={e => { if (!errors.confirmPassword) e.target.style.borderColor = T.teal; e.target.style.boxShadow = '0 0 0 3px rgba(13,148,136,0.10)'; }}
-                onBlur={e  => { e.target.style.borderColor = errors.confirmPassword ? T.error : T.border; e.target.style.boxShadow = 'none'; }}
+                className="w-full h-12 px-4 pr-12 rounded-xl text-sm outline-none transition-all border border-slate-200 focus:border-teal-500/40 focus:ring-4 focus:ring-teal-500/5"
+                style={{ color: T.navy, background: '#fff' }}
               />
               <button
                 type="button"
@@ -237,14 +225,14 @@ const RegisterPage = () => {
                 {...register('agreeTerms')}
                 id="terms"
                 type="checkbox"
-                className="mt-0.5 w-4 h-4 rounded cursor-pointer flex-shrink-0"
+                className="mt-1 w-4 h-4 rounded cursor-pointer flex-shrink-0"
                 style={{ accentColor: T.teal }}
               />
-              <label htmlFor="terms" className="text-xs leading-relaxed cursor-pointer" style={{ color: T.muted }}>
+              <label htmlFor="terms" className="text-xs leading-relaxed cursor-pointer font-medium" style={{ color: T.muted }}>
                 I agree to the{' '}
-                <Link to="/terms" className="font-semibold hover:underline" style={{ color: T.navy }}>Terms of Service</Link>
+                <Link to="/terms" className="font-bold text-teal-600 hover:underline">Terms of Service</Link>
                 {' '}and{' '}
-                <Link to="/privacy" className="font-semibold hover:underline" style={{ color: T.navy }}>Privacy Policy</Link>
+                <Link to="/privacy" className="font-bold text-teal-600 hover:underline">Privacy Policy</Link>
               </label>
             </div>
             {errors.agreeTerms && (
@@ -253,17 +241,14 @@ const RegisterPage = () => {
           </div>
 
           {/* Submit */}
-          <div className="pt-1">
+          <div className="pt-2">
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full h-12 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-70"
+              className="w-full h-12 rounded-xl font-black text-white text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-70 shadow-lg shadow-teal-500/20"
               style={{
                 background: 'linear-gradient(135deg,#0D9488,#0891B2)',
-                boxShadow: '0 4px 16px rgba(13,148,136,0.35)',
               }}
-              onMouseEnter={e => { if (!isLoading) e.currentTarget.style.boxShadow = '0 8px 24px rgba(13,148,136,0.45)'; }}
-              onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(13,148,136,0.35)'; }}
             >
               {isLoading ? (
                 <><Loader2 size={16} className="animate-spin" /> Creating account…</>
@@ -272,21 +257,6 @@ const RegisterPage = () => {
               )}
             </button>
           </div>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 py-1">
-            <div className="flex-1 h-px" style={{ background: T.border }} />
-            <span className="text-xs font-medium" style={{ color: T.muted }}>or</span>
-            <div className="flex-1 h-px" style={{ background: T.border }} />
-          </div>
-
-          {/* Login link */}
-          <p className="text-center text-sm" style={{ color: T.muted }}>
-            Already have an account?{' '}
-            <Link to="/login" className="font-bold hover:underline" style={{ color: T.navy }}>
-              Sign in
-            </Link>
-          </p>
         </form>
       )}
 
@@ -294,31 +264,63 @@ const RegisterPage = () => {
       {step === 2 && (
         <div className="text-center py-4">
           <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
+            className="w-16 h-16 rounded-[24px] flex items-center justify-center mx-auto mb-6 shadow-sm"
             style={{ background: '#F0FDF9' }}
           >
             <Mail size={28} style={{ color: T.teal }} />
           </div>
-          <p className="text-sm leading-relaxed mb-6" style={{ color: T.text }}>
+          <p className="text-sm font-medium leading-relaxed mb-8" style={{ color: T.text }}>
             Please check your inbox and click the verification link to activate your account.
           </p>
-          <div className="pt-5 border-t" style={{ borderColor: T.border }}>
-            <p className="text-xs mb-4" style={{ color: T.muted }}>Didn't receive the email?</p>
+          <div className="pt-8 border-t border-slate-100">
+            <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: T.muted }}>Didn't receive the email?</p>
             <button
-              className="h-9 px-5 rounded-xl text-sm font-semibold border transition-colors hover:bg-slate-50"
+              className="h-10 px-6 rounded-xl text-sm font-black border-2 transition-all hover:bg-slate-50 active:scale-95"
               style={{ borderColor: T.border, color: T.navy }}
             >
               Resend link
             </button>
           </div>
-          <Link
-            to="/login"
-            className="block text-sm mt-5 transition-colors hover:underline"
-            style={{ color: T.muted }}
-          >
-            Back to sign in
-          </Link>
         </div>
+      )}
+    </>
+  );
+
+  if (isUnified) return formContent;
+
+  return (
+    <AuthLayout
+      title={step === 1 ? 'Create your account' : 'Check your inbox'}
+      subtitle={step === 1 ? 'Start your fluency journey today — it\'s free' : `We sent a verification link to ${userEmail}`}
+    >
+      {formContent}
+
+      {step === 1 && (
+        <>
+          {/* Divider */}
+          <div className="flex items-center gap-3 py-6">
+            <div className="flex-1 h-px bg-slate-100" />
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">or</span>
+            <div className="flex-1 h-px bg-slate-100" />
+          </div>
+
+          {/* Login link */}
+          <p className="text-center text-sm font-medium text-slate-500">
+            Already have an account?{' '}
+            <Link to="/login" className="font-black text-teal-600 hover:underline">
+              Sign in
+            </Link>
+          </p>
+        </>
+      )}
+
+      {step === 2 && (
+        <Link
+          to="/login"
+          className="block text-center text-sm font-bold mt-8 text-teal-600 hover:underline"
+        >
+          Back to sign in
+        </Link>
       )}
 
     </AuthLayout>
