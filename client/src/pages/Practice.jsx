@@ -208,7 +208,6 @@ const Practice = () => {
   const [userWeakSounds, setUserWeakSounds] = useState([]);
   const [noWeakSounds, setNoWeakSounds] = useState(false);
 
-  useEffect(() => {
   const loadPracticeData = async () => {
     setLoading(true);
     setNoWeakSounds(false);
@@ -241,10 +240,7 @@ const Practice = () => {
       setCompletedIds(todayCompleted);
 
       // Step 4: Build Mastery Tracker using ALL practice history
-      // We want to show sounds detected as weak AND sounds the user has already practiced
       const practiceHistory = progressRes.data.soundProgress || [];
-      
-      // Combine sounds: those in history + those currently detected as weak
       const allSoundsToTrack = Array.from(new Set([
         ...practiceHistory.map(p => p.sound?.toUpperCase()),
         ...detectedWeakSounds.map(s => s?.toUpperCase())
@@ -259,7 +255,7 @@ const Practice = () => {
           totalAttempts: history?.totalAttempts || 0,
           lastAttempt: history?.lastAttempt || null,
         };
-      }).sort((a, b) => b.totalAttempts - a.totalAttempts); // Show most practiced first
+      }).sort((a, b) => b.totalAttempts - a.totalAttempts);
 
       setSoundProgress(mergedProgress);
 
