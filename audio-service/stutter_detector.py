@@ -78,7 +78,7 @@ def detect_repetitions(words):
     }
 
 
-def detect_pauses(audio_path, min_pause_duration=0.3, silence_threshold=25):
+def detect_pauses(audio_path, min_pause_duration=0.25, silence_threshold=25):
     try:
         audio, sr = librosa.load(audio_path, sr=16000)
         intervals = librosa.effects.split(audio, top_db=silence_threshold)
@@ -229,32 +229,32 @@ def calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rat
     if total_words == 0:
         return 0.0
 
-    # 1. Calculate weighted penalty total (P_total) - Stricter clinical weights
+    # 1. Calculate weighted penalty total (P_total) - Highly strict clinical weights
     p_total = 0.0
-    p_total += repetition_data["count"] * 8.5  # Increased from 7.0
-    p_total += pause_data["count"] * 4.0       # Increased from 3.0
-    p_total += filler_data["count"] * 2.0       # Increased from 1.5
+    p_total += repetition_data["count"] * 10.5  # Increased from 8.5
+    p_total += pause_data["count"] * 5.0        # Increased from 4.0
+    p_total += filler_data["count"] * 3.0        # Increased from 2.0
     
     if advanced_stutters:
         for s in advanced_stutters:
             if s["type"] in ["block", "prolongation"]:
-                p_total += 10.5  # Increased from 9.0
+                p_total += 12.5  # Increased from 10.5
             elif s["type"] in ["replace", "missing"]:
-                p_total += 5.5   # Increased from 4.5
+                p_total += 7.0   # Increased from 5.5
     
-    # 2. Normalized Scoring Formula - Stricter density constant
+    # 2. Normalized Scoring Formula - High-Strictness density constant
     # S = max(0, 100 - ((P_total / N) * k))
-    k = 14.5  # Increased from 12.5 to make penalties feel tighter
+    k = 18.5  # Increased from 14.5 to make penalties impact the score strongly
     density_penalty = (p_total / total_words) * k
     score = 100.0 - density_penalty
     
-    # 3. Stricter Speech Rate (WPM) handling with a 10s threshold (lowered from 15s)
+    # 3. Tightened Speech Rate (WPM) handling with a 10s threshold
     wpm = speech_rate_data["wpm"]
     if duration >= 10.0 and wpm > 0:
-        if wpm < 110:  # Shifted from < 100 WPM
-            score -= (110 - wpm) / 4.5  # Stricter penalty divisor (increased impact)
-        elif wpm > 175:  # Shifted from > 185 WPM
-            score -= (wpm - 175) / 5.5  # Stricter penalty divisor
+        if wpm < 120:  # Shifted from < 110 WPM (target normal speed is 120-165 WPM)
+            score -= (120 - wpm) / 3.0  # Heavier penalty divisor (increased impact from 4.5)
+        elif wpm > 165:  # Shifted from > 175 WPM
+            score -= (wpm - 165) / 4.0  # Heavier penalty divisor (increased impact from 5.5)
             
     return round(max(0, min(100, score)), 1)
 
