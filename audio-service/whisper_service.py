@@ -120,14 +120,16 @@ def transcribe_audio(audio_path):
         word_timestamps=True,              # CRITICAL: gives us per-word timing
         language="en",                     # Force English for consistency
         fp16=False,                        # Use FP32 for CPU compatibility
-        condition_on_previous_text=False,  # CRITICAL: Prevents Whisper from using context
-                                           # to "clean up" repetitions. Without this, 
-                                           # "I I I want" becomes "I want"
+        condition_on_previous_text=False,  # CRITICAL: stops Whisper cleaning "I I I" → "I"
         suppress_blank=False,              # Don't suppress blank/hesitation tokens
-        temperature=0.0,                   # Use greedy decoding for raw accuracy
-        no_speech_threshold=0.6,           # Default threshold to prevent hallucinations on silence
-        compression_ratio_threshold=3.0,   # Higher tolerance — don't skip "repetitive" segments
-        initial_prompt="Umm, let me think... I I I want to go." # Helps anchor the model to English and dysfluent speech, reducing YouTube subtitle hallucinations.
+        temperature=0.15,                  # KEY FIX: greedy (0.0) always picks the most
+                                           # probable token = clean English = stutters erased.
+                                           # 0.15 lets lower-prob tokens (repeats) appear.
+        logprob_threshold=-2.0,            # More permissive: don't suppress quiet/uncertain
+                                           # tokens that often represent stuttered sounds
+        no_speech_threshold=0.6,           # Prevent hallucinations on silence
+        compression_ratio_threshold=3.0,   # Allow repetitive output (don't skip stutter segments)
+        initial_prompt="Umm, let me think... I I I want to go. P p p peter."  # Anchors Whisper to disfluent speech patterns
     )
     
     # Extract word-level data from Whisper's output

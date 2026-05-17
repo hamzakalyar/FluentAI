@@ -1,7 +1,9 @@
 import api from './api';
 
 export const practiceService = {
-  generateExercises: (difficulty) => api.post('/practice/generate', { difficulty }),
+  // Pass weak sounds so the backend generates exercises targeting them specifically
+  generateExercises: (difficulty, weakSounds = []) =>
+    api.post('/practice/generate', { difficulty, weakSounds }),
   
   saveResult: (resultData) => api.post('/practice/results', resultData),
 

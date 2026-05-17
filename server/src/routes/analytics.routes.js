@@ -15,18 +15,29 @@ const router = express.Router();
 
 /**
  * GET /api/analytics/summary
- * 
- * Returns the high-level summary stats for the main dashboard.
+ * Returns total sessions, average score, latest score, trend, and top weak sounds.
  */
 router.get('/summary', auth, async (req, res) => {
   try {
-    const sessions = await Session.find({ user: req.user._id, status: 'completed' })
-      .sort({ createdAt: -1 });
+    // Fetch both full recording sessions AND practice results
+    const [sessions, practiceResults] = await Promise.all([
+      Session.find({ user: req.user._id, status: 'completed' })
+        .select('metrics.fluencyScore metrics.speechRateWPM metrics.repetitionCount metrics.pauseCount metrics.fillerCount weakSoundsDetected createdAt duration')
+        .sort({ createdAt: -1 }),
+      PracticeResult.find({ user: req.user._id })
+        .select('score targetSound createdAt targetSentence difficulty')
+        .sort({ createdAt: -1 })
+    ]);
 
-    if (sessions.length === 0) {
+    const totalRecordings = sessions.length;
+    const totalPractice = practiceResults.length;
+    const totalActivities = totalRecordings + totalPractice;
+
+    if (totalActivities === 0) {
       return res.json({
         totalSessions: 0,
         averageFluencyScore: 0,
+        latestFluencyScore: 0,
         avgSpeechRate: 0,
         avgRepetitions: 0,
         improvementTrend: 'no_data',
@@ -37,71 +48,92 @@ router.get('/summary', auth, async (req, res) => {
       });
     }
 
-    const totalSessions = sessions.length;
-    const avgFluency = Math.round(sessions.reduce((sum, s) => sum + (s.metrics?.fluencyScore || 0), 0) / totalSessions);
-    const avgWPM = Math.round(sessions.reduce((sum, s) => sum + (s.metrics?.speechRateWPM || 0), 0) / totalSessions);
-    const avgReps = (sessions.reduce((sum, s) => sum + (s.metrics?.repetitionCount || 0), 0) / totalSessions).toFixed(1);
+    // Combined Metrics
+    const allScores = [
+      ...sessions.map(s => s.metrics?.fluencyScore || 0),
+      ...practiceResults.map(p => p.score || 0)
+    ];
+    const avgFluency = Math.round(allScores.reduce((sum, s) => sum + s, 0) / allScores.length);
+    
+    // WPM and Repetitions still primarily come from full sessions for accuracy
+    const avgWPM = totalRecordings > 0 ? Math.round(sessions.reduce((sum, s) => sum + (s.metrics?.speechRateWPM || 0), 0) / totalRecordings) : 0;
+    const avgReps = totalRecordings > 0 ? (sessions.reduce((sum, s) => sum + (s.metrics?.repetitionCount || 0), 0) / totalRecordings).toFixed(1) : "0.0";
 
-    // Comparative Trends (Last 7 days vs Previous 7 days)
-    const now = new Date();
-    const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const prevWeek = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    // Combined recent list for Dashboard
+    const combinedRecent = [
+      ...sessions.slice(0, 5).map(s => ({
+        id: s._id.toString(),
+        type: 'Session',
+        date: s.createdAt,
+        fluencyScore: s.metrics?.fluencyScore,
+        speechRateWPM: s.metrics?.speechRateWPM,
+        duration: s.duration,
+        name: `Recording Check`
+      })),
+      ...practiceResults.slice(0, 5).map(p => ({
+        id: p._id.toString(),
+        type: 'Practice',
+        date: p.createdAt,
+        fluencyScore: p.score,
+        name: `Practice: ${p.targetSound} Focus`,
+        details: p.targetSentence
+      }))
+    ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 6);
 
-    const thisWeekSessions = sessions.filter(s => s.createdAt >= lastWeek);
-    const prevWeekSessions = sessions.filter(s => s.createdAt >= prevWeek && s.createdAt < lastWeek);
-
-    const calculateAvg = (arr, key) => arr.length > 0 ? arr.reduce((sum, s) => sum + (s.metrics?.[key] || 0), 0) / arr.length : 0;
-
-    const trends = {
-      sessions: thisWeekSessions.length - prevWeekSessions.length,
-      wpm: prevWeekSessions.length > 0 ? Math.round(((calculateAvg(thisWeekSessions, 'speechRateWPM') - calculateAvg(prevWeekSessions, 'speechRateWPM')) / calculateAvg(prevWeekSessions, 'speechRateWPM')) * 100) : 0,
-      repetitions: prevWeekSessions.length > 0 ? Math.round(((calculateAvg(thisWeekSessions, 'repetitionCount') - calculateAvg(prevWeekSessions, 'repetitionCount')) / calculateAvg(prevWeekSessions, 'repetitionCount')) * 100) : 0
-    };
-
-    // Improvement Trend based on fluency score
+    // Improvement Trend
     let improvementTrend = 'stable';
-    if (totalSessions >= 4) {
-      const recent = sessions.slice(0, 2).reduce((sum, s) => sum + (s.metrics?.fluencyScore || 0), 0) / 2;
-      const older = sessions.slice(2, 4).reduce((sum, s) => sum + (s.metrics?.fluencyScore || 0), 0) / 2;
+    if (allScores.length >= 4) {
+      const recent = allScores.slice(0, 2).reduce((sum, s) => sum + s, 0) / 2;
+      const older = allScores.slice(2, 4).reduce((sum, s) => sum + s, 0) / 2;
       if (recent > older + 5) improvementTrend = 'improving';
       else if (recent < older - 5) improvementTrend = 'declining';
     }
 
-    // Top Weak Sounds (from user profile)
-    const user = await User.findById(req.user._id);
-    const topWeakSounds = (user.weakSounds || [])
-      .sort((a, b) => b.frequency - a.frequency)
-      .slice(0, 3);
+    const user = await User.findById(req.user._id).select('weakSounds');
+    let topWeakSounds = user && user.weakSounds ? [...user.weakSounds].sort((a, b) => b.frequency - a.frequency).slice(0, 5) : [];
+
+    // Fallback for weak sounds
+    if (topWeakSounds.length === 0 && sessions.length > 0) {
+      const soundMap = {};
+      for (const s of sessions.slice(0, 10)) {
+        for (const ws of (s.weakSoundsDetected || [])) {
+          if (ws.sound) soundMap[ws.sound] = (soundMap[ws.sound] || 0) + (ws.frequency || 1);
+        }
+      }
+      topWeakSounds = Object.entries(soundMap)
+        .map(([sound, frequency]) => ({ sound, frequency }))
+        .sort((a, b) => b.frequency - a.frequency)
+        .slice(0, 5);
+    }
 
     res.json({
-      totalSessions,
+      totalSessions: totalActivities,
+      totalRecordings,
+      totalPractice,
       averageFluencyScore: avgFluency,
+      latestFluencyScore: allScores[0] || 0,
       avgSpeechRate: avgWPM,
       avgRepetitions: parseFloat(avgReps),
       improvementTrend,
-      trends,
+      trends: { 
+        sessions: totalActivities, // Simplified for now
+        wpm: 0, 
+        repetitions: 0 
+      },
       topWeakSounds,
-      recentSessions: sessions.slice(0, 5).map(s => ({
-        id: s._id.toString(),
-        date: s.createdAt,
-        fluencyScore: s.metrics?.fluencyScore,
-        wpm: s.metrics?.speechRateWPM
-      })),
+      recentSessions: combinedRecent,
       latestSession: sessions[0]
     });
-
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch summary analytics', error: error.message });
   }
 });
 
 /**
- * GET /api/analytics/historical
- * 
- * Returns data points for Recharts charts.
- * Query params: timeframe (7d, 30d, 90d)
+ * GET /api/analytics/historical OR /api/analytics/trend
+ * Unified endpoint for charting.
  */
-router.get('/historical', auth, async (req, res) => {
+router.get(['/historical', '/trend'], auth, async (req, res) => {
   try {
     const { timeframe = '7d' } = req.query;
     let days = 7;
@@ -116,23 +148,31 @@ router.get('/historical', auth, async (req, res) => {
       status: 'completed',
       createdAt: { $gte: startDate }
     })
-    .sort({ createdAt: 1 }) // Chronological order for charts
+    .sort({ createdAt: 1 })
     .select('metrics.fluencyScore metrics.speechRateWPM metrics.repetitionCount metrics.pauseCount createdAt');
 
-    const chartData = sessions.map(s => ({
+    // FALLBACK: If no sessions in this timeframe, get the last 10 sessions anyway 
+    // so the charts aren't just empty.
+    let finalSessions = sessions;
+    if (sessions.length === 0) {
+      finalSessions = await Session.find({ user: req.user._id, status: 'completed' })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .select('metrics.fluencyScore metrics.speechRateWPM metrics.repetitionCount metrics.pauseCount createdAt');
+      finalSessions.reverse(); // Back to chronological order
+    }
+
+    const chartData = finalSessions.map(s => ({
       name: new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       score: s.metrics?.fluencyScore || 0,
+      value: s.metrics?.fluencyScore || 0, // for generic 'value' consumers
       wpm: s.metrics?.speechRateWPM || 0,
       repetitions: s.metrics?.repetitionCount || 0,
       pauses: s.metrics?.pauseCount || 0,
       date: s.createdAt
     }));
 
-    res.json({
-      timeframe,
-      data: chartData
-    });
-
+    res.json({ timeframe, data: chartData });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch historical analytics', error: error.message });
   }
@@ -140,7 +180,6 @@ router.get('/historical', auth, async (req, res) => {
 
 /**
  * GET /api/analytics/weak-sounds
- * 
  * Aggregated progress per sound from PracticeResults.
  */
 router.get('/weak-sounds', auth, async (req, res) => {
@@ -158,32 +197,21 @@ router.get('/weak-sounds', auth, async (req, res) => {
       { $sort: { totalAttempts: -1 } }
     ]);
 
+    const user = await User.findById(req.user._id).select('weakSounds');
+    const profileWeakSounds = user?.weakSounds || [];
+
     const formattedProgress = soundProgress.map(sp => ({
       sound: sp._id,
       score: Math.round(sp.avgScore),
       totalAttempts: sp.totalAttempts,
       lastAttempt: sp.lastAttempt,
-      color: _getSoundColor(sp._id)
+      frequency: profileWeakSounds.find(p => p.sound === sp._id)?.frequency || 0
     }));
 
-    res.json({ soundProficiency: formattedProgress });
-
+    res.json({ soundProficiency: formattedProgress, weakSounds: profileWeakSounds });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch sound analytics', error: error.message });
   }
 });
-
-// Helper for UI colors
-function _getSoundColor(sound) {
-  const colors = {
-    'S': '#0D9488',
-    'R': '#F59E0B',
-    'TH': '#3B82F6',
-    'L': '#8B5CF6',
-    'K': '#EF4444',
-    'B': '#10B981'
-  };
-  return colors[sound.toUpperCase()] || '#6366F1';
-}
 
 module.exports = router;

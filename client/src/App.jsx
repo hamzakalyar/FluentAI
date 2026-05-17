@@ -1,8 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/auth/LoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
+import UnifiedAuth from './pages/auth/UnifiedAuth';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import VerifyEmailPage from './pages/auth/VerifyEmailPage';
@@ -18,9 +17,12 @@ import SessionDetail from './pages/SessionDetail';
 import Practice from './pages/Practice';
 import Settings from './pages/Settings';
 import AiAssistant from './pages/AiAssistant';
+import SupportCenter from './pages/SupportCenter';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminOverview from './pages/admin/AdminOverview';
 import AdminPlaceholder from './pages/admin/AdminPlaceholder';
+import TermsPage from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -30,12 +32,14 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/login" element={<UnifiedAuth />} />
+          <Route path="/register" element={<UnifiedAuth />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
-          
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+
           {/* Protected Routes */}
           <Route element={
             <ProtectedRoute>
@@ -50,6 +54,7 @@ function App() {
             <Route path="sessions/:id" element={<SessionDetail />} />
             <Route path="practice" element={<Practice />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="help" element={<SupportCenter />} />
             <Route path="assistant" element={<AiAssistant />} />
             <Route path="*" element={<NotFound />} />
           </Route>

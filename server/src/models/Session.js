@@ -14,6 +14,9 @@ const sessionSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  audioUrl: {
+    type: String
+  },
   duration: {
     type: Number, // duration in seconds
     default: 0
@@ -51,9 +54,10 @@ const sessionSchema = new mongoose.Schema({
     }],
     fillers: [String],
     detectedStutters: [{
-      type: { type: String, enum: ['repetition', 'pause', 'filler'] },
+      type: { type: String },
       word: String,
-      position: Number
+      position: Number,
+      details: String
     }]
   },
   // NLP analysis data

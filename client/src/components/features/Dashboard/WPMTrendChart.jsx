@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer 
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer
 } from 'recharts';
 import { analyticsService } from '../../../services/analyticsService';
 

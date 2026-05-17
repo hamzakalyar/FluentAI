@@ -1,7 +1,17 @@
 import axios from 'axios';
 import { toast } from 'sonner';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+// Robust fallback: supports both VITE_API_BASE_URL and VITE_API_URL
+let rawUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+// Auto-normalize: strip trailing slashes and ensure it ends with /api
+if (rawUrl && !rawUrl.endsWith('/api') && rawUrl !== 'http://localhost:3001/api') {
+  rawUrl = rawUrl.replace(/\/$/, '') + '/api';
+}
+
+const API_BASE_URL = rawUrl;
+
+console.log("🔍 Diagnostic - Loaded Frontend API URL:", API_BASE_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,

@@ -2,20 +2,17 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Activity, ShieldCheck, Microscope, Brain, ClipboardList,
-  ArrowRight, Users
+  ArrowRight, Users, BarChart3, Zap
 } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 
 /* ── Design tokens ─────────────────────── */
 const T = {
-  teal:    '#0D9488',
-  tealMid: '#0891B2',
-  navy:    '#0F172A',
-  text:    '#374151',
-  muted:   '#6B7280',
-  border:  '#E5E7EB',
-  light:   '#F8FAFC',
+  navy: '#0F172A',
+  text: 'var(--text-secondary)',
+  muted: 'var(--text-muted)',
+  border: 'var(--border-subtle)',
 };
 
 /* ── Scroll reveal ─────────────────────── */
@@ -30,363 +27,221 @@ function useReveal() {
   }, []);
 }
 
-/* ═══════════════════════════════════════ */
 export default function LandingPage() {
   const navigate = useNavigate();
   useReveal();
 
   return (
-    <div className="min-h-screen overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen overflow-x-hidden bg-[var(--bg-base)]">
       <Navbar />
 
-      {/* ═══════════════ HERO ═══════════════ */}
-      <section className="hero-gradient min-h-[90vh] flex items-center py-20 lg:py-0">
-        <div className="max-w-6xl mx-auto px-6 w-full">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      {/* ── HERO SECTION ── */}
+      <section id="hero" className="relative min-h-[80vh] flex items-start pt-24 pb-20 lg:pt-28 lg:pb-0 overflow-hidden scroll-mt-20">
+        {/* Background Decorative Elements */}
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-teal-500/5 rounded-full blur-[120px] -z-10" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-[100px] -z-10" />
+        
+        <div className="max-w-7xl mx-auto px-6 w-full">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-24 items-start">
 
-            {/* ── Left ── */}
-            <div>
-              {/* Badge */}
-              <div
-                className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full mb-8 border"
-                style={{ background: 'rgba(13,148,136,0.08)', borderColor: 'rgba(13,148,136,0.2)', color: T.teal }}
-              >
-                <Activity size={12} strokeWidth={2.5} />
-                Next-Generation Clinical Interface
+            {/* ── Left Content ── */}
+            <div className="reveal">
+              <div className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.25em] px-4 py-2 rounded-full mb-8 border border-teal-500/20 bg-teal-500/5 text-teal-600">
+                <Activity size={12} strokeWidth={3} />
+                Next-Gen Clinical Interface
               </div>
 
-              {/* Headline */}
-              <h1 className="text-5xl lg:text-6xl xl:text-7xl font-black leading-[1.06] tracking-tight mb-6">
-                <span style={{ color: T.navy }}>Precision Fluency</span><br />
-                <span style={{ background: 'linear-gradient(135deg,#0D9488,#0891B2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-                  Analytics.
+              <h1 className="text-5xl lg:text-6xl xl:text-7xl font-black leading-[1.05] tracking-tight mb-8 font-syne">
+                <span className="text-[var(--text-primary)]">Precision</span><br />
+                <span className="bg-gradient-to-r from-teal-600 to-teal-400 bg-clip-text text-transparent">
+                  Fluency.
                 </span>
               </h1>
 
-              <p className="text-lg leading-relaxed mb-10 max-w-[480px]" style={{ color: T.text }}>
+              <p className="text-lg leading-relaxed mb-12 max-w-[540px] font-medium text-[var(--text-secondary)]">
                 An advanced AI monitoring system designed for stuttering management,
                 objective clinical review, and continuous patient progress tracking.
                 Built for modern healthcare.
               </p>
 
-              {/* CTAs */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-10">
+              <div className="flex flex-col sm:flex-row gap-5 mb-14">
                 <button
                   onClick={() => navigate('/register')}
-                  className="group inline-flex items-center justify-center gap-2 h-12 px-7 rounded-full font-bold text-white text-sm transition-all hover:shadow-lg active:scale-[0.98]"
-                  style={{ background: 'linear-gradient(135deg,#0D9488,#0891B2)', boxShadow: '0 4px 16px rgba(13,148,136,0.35)' }}
-                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 8px 24px rgba(13,148,136,0.45)'}
-                  onMouseLeave={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(13,148,136,0.35)'}
+                  className="group inline-flex items-center justify-center gap-3 h-14 px-10 rounded-2xl font-black text-white text-base transition-all bg-teal-600 hover:bg-teal-700 shadow-xl shadow-teal-600/20 active:scale-[0.98]"
                 >
                   Start Patient Trial
-                  <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
+                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </button>
                 <button
-                  className="inline-flex items-center justify-center gap-2 h-12 px-7 rounded-full font-semibold text-sm border-2 transition-all hover:bg-white/60 active:scale-[0.98]"
-                  style={{ borderColor: 'rgba(13,148,136,0.3)', color: T.teal, background: 'rgba(255,255,255,0.5)' }}
+                  className="inline-flex items-center justify-center gap-3 h-14 px-10 rounded-2xl font-black text-base border-2 border-[var(--border-subtle)] text-[var(--text-primary)] bg-[var(--bg-surface)] transition-all hover:bg-[var(--bg-elevated)] active:scale-[0.98]"
                 >
-                  <Users size={14} />
+                  <Users size={18} />
                   For Clinicians
                 </button>
               </div>
 
-              {/* Trust row */}
-              <div className="flex flex-wrap gap-6">
+              <div className="flex flex-wrap gap-8">
                 {[
                   { Icon: ShieldCheck, label: 'HIPAA Ready' },
-                  { Icon: Activity,    label: 'Evidence-Based' },
-                  { Icon: Brain,       label: 'AI-Powered' },
+                  { Icon: Activity, label: 'Evidence-Based' },
+                  { Icon: Brain, label: 'AI-Powered' },
                 ].map(({ Icon, label }) => (
-                  <div key={label} className="flex items-center gap-2 text-sm font-medium" style={{ color: T.muted }}>
-                    <Icon size={15} style={{ color: T.teal }} strokeWidth={2} />
+                  <div key={label} className="flex items-center gap-2.5 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">
+                    <Icon size={16} className="text-teal-600" strokeWidth={2.5} />
                     {label}
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* ── Right: Fluency Profile Card ── */}
-            <div className="flex justify-center lg:justify-end">
-              <div
-                className="w-full max-w-sm bg-white rounded-2xl p-7"
-                style={{ boxShadow: '0 20px 60px rgba(15,23,42,0.12), 0 4px 16px rgba(13,148,136,0.08)' }}
-              >
-                {/* Card header */}
-                <div className="flex items-center justify-between mb-7">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#F0FDF9' }}>
-                      <Activity size={18} style={{ color: T.teal }} />
+            {/* ── Right Content: Live Dashboard Mockup ── */}
+            <div className="flex justify-center lg:justify-end reveal delay-200">
+              <div className="w-full max-w-sm bg-[var(--bg-surface)] rounded-[32px] p-8 border border-[var(--border-subtle)] shadow-premium relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:scale-125 transition-transform duration-1000" />
+                
+                <div className="flex items-center justify-between mb-10 relative z-10">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-teal-500/10 border border-teal-500/20 shadow-sm">
+                      <Activity size={22} className="text-teal-600" />
                     </div>
                     <div>
-                      <p className="font-bold text-sm" style={{ color: T.navy }}>Fluency Profile</p>
-                      <p className="text-xs mt-0.5" style={{ color: T.muted }}>Subject #8492-A</p>
+                      <p className="font-black text-base tracking-tight text-[var(--text-primary)] font-syne">Fluency Profile</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest mt-1 text-[var(--text-muted)]">Subject #8492-A</p>
                     </div>
                   </div>
-                  <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wider"
-                    style={{ background: '#F0FDF4', color: '#16A34A' }}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" />
+                  <span className="flex items-center gap-2 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     Active
                   </span>
                 </div>
 
-                {/* Metric 1 */}
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm" style={{ color: T.muted }}>Syllables Spoken</span>
-                    <span className="text-sm font-bold" style={{ color: T.navy }}>1,248</span>
-                  </div>
-                  <div className="h-2 rounded-full overflow-hidden" style={{ background: '#E5E7EB' }}>
-                    <div
-                      className="h-full rounded-full bar-fill"
-                      style={{
-                        '--bar-w': '82%',
-                        width: '82%',
-                        background: 'linear-gradient(90deg,#0D9488,#0891B2)',
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Metric 2 */}
-                <div className="mb-7">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm" style={{ color: T.muted }}>Disfluency Rate</span>
-                    <span className="text-sm font-bold" style={{ color: T.teal }}>4.2%</span>
-                  </div>
-                  <div className="h-2 rounded-full overflow-hidden" style={{ background: '#E5E7EB' }}>
-                    <div
-                      className="h-full rounded-full bar-fill"
-                      style={{
-                        '--bar-w': '18%',
-                        width: '18%',
-                        background: 'linear-gradient(90deg,#0D9488,#14B8A6)',
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Session list */}
-                <div className="border-t pt-5" style={{ borderColor: '#F3F4F6' }}>
-                  <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: T.muted }}>Recent Sessions</p>
-                  {[
-                    { date: 'May 9, 2025',  score: '94/100', delta: '+3' },
-                    { date: 'May 7, 2025',  score: '91/100', delta: '+6' },
-                    { date: 'May 5, 2025',  score: '85/100', delta: '+5' },
-                  ].map(({ date, score, delta }) => (
-                    <div key={date} className="flex items-center justify-between py-2 border-b last:border-b-0" style={{ borderColor: '#F9FAFB' }}>
-                      <span className="text-xs" style={{ color: T.muted }}>{date}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold" style={{ color: T.navy }}>{score}</span>
-                        <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: '#F0FDF4', color: '#16A34A' }}>{delta}</span>
-                      </div>
+                <div className="space-y-8 relative z-10">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Syllables Spoken</span>
+                      <span className="text-sm font-black text-[var(--text-primary)]">1,248</span>
                     </div>
-                  ))}
+                    <div className="h-2.5 bg-[var(--bg-base)] rounded-full overflow-hidden shadow-inner">
+                      <div className="h-full rounded-full bg-gradient-to-r from-teal-600 to-teal-400" style={{ width: '82%' }} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Disfluency Rate</span>
+                      <span className="text-sm font-black text-teal-600">4.2%</span>
+                    </div>
+                    <div className="h-2.5 bg-[var(--bg-base)] rounded-full overflow-hidden shadow-inner">
+                      <div className="h-full rounded-full bg-gradient-to-r from-teal-400 to-teal-300" style={{ width: '18%' }} />
+                    </div>
+                  </div>
+
+                  <div className="pt-8 border-t border-[var(--border-subtle)]">
+                    <p className="text-[10px] font-black uppercase tracking-[0.25em] mb-6 text-[var(--text-muted)]">Recent Performance</p>
+                    <div className="space-y-4">
+                      {[
+                        { date: 'Today', score: '94/100', delta: '+3' },
+                        { date: 'Yesterday', score: '91/100', delta: '+6' },
+                      ].map(({ date, score, delta }) => (
+                        <div key={date} className="flex items-center justify-between p-4 bg-[var(--bg-base)] rounded-2xl border border-[var(--border-subtle)] hover:bg-[var(--bg-elevated)] transition-colors">
+                          <span className="text-xs font-bold text-[var(--text-secondary)]">{date}</span>
+                          <div className="flex items-center gap-4">
+                            <span className="text-xs font-black text-[var(--text-primary)]">{score}</span>
+                            <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-600">{delta}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </section>
 
-      {/* ═══════════════ FEATURES ═══════════════ */}
-      <section id="features" className="py-28 bg-white">
+      {/* ── FEATURES SECTION ── */}
+      <section id="features" className="py-24 bg-[var(--bg-surface)] relative scroll-mt-20">
         <div className="max-w-6xl mx-auto px-6">
-
           <div className="text-center mb-20 reveal">
-            <p className="text-xs font-bold tracking-[0.2em] uppercase mb-4" style={{ color: T.teal }}>
-              Precision Tools
-            </p>
-            <h2 className="text-4xl lg:text-5xl font-black mb-5" style={{ color: T.navy }}>
+            <p className="text-[10px] font-black tracking-[0.4em] uppercase mb-4 text-teal-600">
               Diagnostic Capabilities
+            </p>
+            <h2 className="text-4xl lg:text-5xl font-black mb-6 tracking-tight text-[var(--text-primary)] font-syne">
+              Precision Medicine Tools
             </h2>
-            <p className="text-lg max-w-xl mx-auto leading-relaxed" style={{ color: T.muted }}>
+            <p className="text-lg max-w-xl mx-auto leading-relaxed font-medium text-[var(--text-secondary)]">
               State-of-the-art acoustic modeling engineered for precise, objective
-              measurements of speech patterns in clinical and home environments.
+              measurements of speech patterns.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-12 lg:gap-16">
+          <div className="grid md:grid-cols-3 gap-10 lg:gap-16">
             {[
               {
-                Icon:  Microscope,
+                Icon: Microscope,
                 title: 'Acoustic Precision',
-                desc:  'High-fidelity audio processing capable of isolating micro-stutters, prolongations, and blockages with clinical accuracy.',
+                desc: 'High-fidelity audio processing isolating micro-stutters, prolongations, and blockages with clinical accuracy.',
               },
               {
-                Icon:  Brain,
-                title: 'Cognitive Processing',
-                desc:  'Advanced natural language models that contextually analyze speech disfluencies without relying on rigid linguistic rules.',
+                Icon: Brain,
+                title: 'Cognitive Insights',
+                desc: 'Advanced natural language models that contextually analyze speech disfluencies beyond rigid rules.',
               },
               {
-                Icon:  ClipboardList,
-                title: 'Objective Reporting',
-                desc:  'Automated generation of detailed session transcripts and quantitative metric reports for therapeutic review.',
+                Icon: ClipboardList,
+                title: 'Institutional Data',
+                desc: 'Automated generation of detailed session transcripts and quantitative metric reports for review.',
               },
             ].map(({ Icon, title, desc }) => (
-              <div key={title} className="reveal group">
-                <div
-                  className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-all duration-300 group-hover:scale-110"
-                  style={{ background: '#F0FDF9', border: '1px solid rgba(13,148,136,0.12)' }}
-                >
-                  <Icon size={26} style={{ color: T.teal }} strokeWidth={1.5} />
+              <div key={title} className="reveal group p-7 rounded-[28px] bg-[var(--bg-base)] border border-[var(--border-subtle)] hover:border-teal-500/30 transition-all duration-500 hover:shadow-premium">
+                <div className="w-14 h-14 rounded-[20px] bg-teal-500/10 flex items-center justify-center mb-8 shadow-sm border border-teal-500/20 group-hover:scale-110 transition-transform">
+                  <Icon size={24} className="text-teal-600" />
                 </div>
-                <h3 className="text-xl font-black mb-3" style={{ color: T.navy }}>{title}</h3>
-                <p className="text-sm leading-relaxed" style={{ color: T.text }}>{desc}</p>
+                <h3 className="text-xl font-black mb-4 tracking-tight text-[var(--text-primary)] font-syne">{title}</h3>
+                <p className="text-sm leading-relaxed font-medium text-[var(--text-secondary)]">{desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ═══════════════ WORKFLOW (dark) ═══════════════ */}
-      <section
-        id="how-it-works"
-        className="py-28 relative overflow-hidden"
-        style={{ background: 'linear-gradient(160deg, #0A1628 0%, #0F2744 50%, #0A1628 100%)' }}
-      >
-        {/* Subtle grid */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-[0.04]"
-          style={{
-            backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
-            backgroundSize: '48px 48px',
-          }}
-        />
-        {/* Teal ambient light */}
-        <div
-          className="absolute top-0 right-1/4 w-96 h-96 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(13,148,136,0.15) 0%, transparent 65%)' }}
-        />
-
-        <div className="max-w-6xl mx-auto px-6 relative">
-          <div className="mb-16 reveal">
-            <p className="text-xs font-bold tracking-[0.2em] uppercase mb-4" style={{ color: T.teal }}>
-              Process
-            </p>
-            <h2 className="text-4xl lg:text-5xl font-black text-white">Clinical Workflow</h2>
-          </div>
-
-          {/* Steps */}
-          <div className="relative reveal">
-            {/* Connector line */}
-            <div
-              className="hidden md:block absolute left-[2.5rem] right-[2.5rem] step-line"
-              style={{ top: '2rem', height: 2, opacity: 0.5 }}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-10 relative z-10">
-              {[
-                { n: '01', title: 'Capture',  desc: 'Securely record patient audio in clinical or home settings.' },
-                { n: '02', title: 'Analyze',  desc: 'AI engine processes phonemes and detects irregular fluency events.' },
-                { n: '03', title: 'Evaluate', desc: 'Review quantitative data via the secure clinician dashboard.' },
-                { n: '04', title: 'Adapt',    desc: 'Adjust therapy protocols based on objective longitudinal trends.' },
-              ].map(({ n, title, desc }, i) => (
-                <div key={n}>
-                  <div
-                    className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-black mb-6 border-2"
-                    style={{
-                      background: i === 0
-                        ? 'linear-gradient(135deg,#0D9488,#0891B2)'
-                        : 'rgba(255,255,255,0.07)',
-                      borderColor: i === 0 ? 'transparent' : 'rgba(255,255,255,0.15)',
-                      color: i === 0 ? '#fff' : 'rgba(255,255,255,0.5)',
-                    }}
-                  >{n}</div>
-                  <h4 className="text-lg font-black text-white mb-2">{title}</h4>
-                  <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>{desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* ── CALL TO ACTION / HOW IT WORKS ── */}
+      <section id="how-it-works" className="py-24 bg-[var(--bg-base)] relative overflow-hidden scroll-mt-20">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-teal-600/5 rounded-full blur-[160px]" />
         </div>
-      </section>
-
-      {/* ═══════════════ STATS STRIP ═══════════════ */}
-      <section className="py-16 bg-white border-b" style={{ borderColor: T.border }}>
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 reveal">
-            {[
-              { val: '98%',  label: 'Transcription accuracy' },
-              { val: '< 3s', label: 'Time to results' },
-              { val: '12k+', label: 'Active patients' },
-              { val: '40+',  label: 'Countries served' },
-            ].map(({ val, label }) => (
-              <div key={label} className="text-center">
-                <p
-                  className="text-4xl font-black mb-1"
-                  style={{ background: 'linear-gradient(135deg,#0D9488,#0891B2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
-                >{val}</p>
-                <p className="text-sm font-medium" style={{ color: T.muted }}>{label}</p>
-              </div>
-            ))}
+        
+        <div className="max-w-3xl mx-auto px-6 text-center reveal relative z-10">
+          <div className="w-16 h-16 rounded-[24px] bg-teal-600/10 flex items-center justify-center mx-auto mb-8 border border-teal-500/20 shadow-lg">
+            <ShieldCheck size={28} className="text-teal-600" />
           </div>
-        </div>
-      </section>
-
-      {/* ═══════════════ TESTIMONIAL ═══════════════ */}
-      <section className="py-24" style={{ background: T.light }}>
-        <div className="max-w-3xl mx-auto px-6 text-center reveal">
-          <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-8"
-            style={{ background: '#F0FDF9', border: '1px solid rgba(13,148,136,0.15)' }}
-          >
-            <ShieldCheck size={26} style={{ color: T.teal }} />
-          </div>
-          <blockquote className="text-2xl lg:text-3xl font-bold leading-relaxed mb-8" style={{ color: T.navy }}>
-            "The objective data on my pauses changed how my therapist and I work together.
-            For the first time we had real numbers to act on. Our sessions became
-            twice as effective within a month."
-          </blockquote>
-          <div className="flex items-center justify-center gap-3">
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm"
-              style={{ background: 'linear-gradient(135deg,#0D9488,#0891B2)' }}
-            >D</div>
-            <div className="text-left">
-              <p className="text-sm font-bold" style={{ color: T.navy }}>David K.</p>
-              <p className="text-xs" style={{ color: T.muted }}>University Student · Using FluentAI for 6 months</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════ CTA ═══════════════ */}
-      <section className="cta-gradient py-28">
-        <div className="max-w-2xl mx-auto px-6 text-center reveal">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-8 bg-white"
-            style={{ boxShadow: '0 4px 20px rgba(13,148,136,0.15)' }}
-          >
-            <ShieldCheck size={30} style={{ color: T.teal }} />
-          </div>
-          <h2 className="text-4xl lg:text-5xl font-black mb-5 leading-tight" style={{ color: T.navy }}>
+          <h2 className="text-4xl lg:text-5xl font-black mb-6 leading-[1.1] text-[var(--text-primary)] tracking-tight font-syne">
             Elevate Speech Therapy<br />
-            with <span style={{ background: 'linear-gradient(135deg,#0D9488,#0891B2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Objective Data</span>
+            with <span className="text-teal-600">Objective Data</span>
           </h2>
-          <p className="text-lg mb-10 leading-relaxed" style={{ color: T.text }}>
-            Join leading Speech-Language Pathologists and research institutions
-            leveraging AI for precise fluency measurement and therapy tracking.
+          <p className="text-lg mb-10 leading-relaxed text-[var(--text-secondary)] font-medium max-w-xl mx-auto">
+            Join leading institutions leveraging AI for precise fluency measurement and evidence-based therapy tracking.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
               onClick={() => navigate('/register')}
-              className="h-14 px-10 rounded-xl font-bold text-white text-base transition-all hover:opacity-90 active:scale-[0.98]"
-              style={{ background: T.navy }}
+              className="h-14 px-10 rounded-2xl font-black text-white text-base transition-all bg-teal-600 hover:bg-teal-700 shadow-xl shadow-teal-600/20 active:scale-[0.98]"
             >
-              Request Platform Access
+              Request Access
             </button>
             <button
-              className="h-14 px-10 rounded-xl font-semibold text-base border-2 bg-white transition-all hover:bg-slate-50 active:scale-[0.98]"
-              style={{ borderColor: T.border, color: T.navy }}
+              className="h-14 px-10 rounded-2xl font-black text-base border-2 border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-primary)] transition-all hover:bg-[var(--bg-elevated)] active:scale-[0.98]"
             >
-              View Clinical Studies
+              Clinical Studies
             </button>
           </div>
         </div>
       </section>
 
-      <Footer />
+      <div id="about" className="scroll-mt-20">
+        <Footer />
+      </div>
     </div>
   );
 }

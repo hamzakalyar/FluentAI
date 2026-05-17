@@ -79,7 +79,15 @@ const PatientDashboard = () => {
                <h3 className="font-syne text-[15px] font-bold text-[var(--text-primary)]">Recent Sessions</h3>
                <button className="text-[11px] font-bold text-[var(--accent)] uppercase tracking-wider hover:underline">View All</button>
             </div>
-            <RecentSessions />
+            <RecentSessions 
+               sessions={stats?.recentSessions?.map(s => ({
+                  ...s,
+                  id: s.id || s._id,
+                  score: s.fluencyScore,
+                  isClickable: s.type === 'Session' || s.type === undefined,
+                  date: new Date(s.date).toLocaleDateString()
+               }))} 
+            />
          </Card>
          
          <WPMTrendChart />
