@@ -250,12 +250,28 @@ def analyze_audio(audio_path, transcript_data):
     duration = transcript_data.get("duration", 0)
     transcript_text = transcript_data.get("text", "")
     
-    if not words:
+    # Calculate RMS energy of the audio file to detect silence/static/ambient noise
+    try:
+        audio, sr = librosa.load(audio_path, sr=16000)
+        rms_energy = np.sqrt(np.mean(audio**2)) if len(audio) > 0 else 0.0
+    except Exception as e:
+        print(f"⚠️ Failed to calculate RMS energy: {e}")
+        rms_energy = 0.0
+
+    print(f"📊 RMS Energy: {rms_energy:.5f} | Words transcribed: {len(words)}")
+
+    # Strict Silence/Ambient Noise/Insufficient Data Safeguard:
+    # If the energy level is extremely low (silent room / static hum / dead mic),
+    # or if fewer than 3 words are transcribed,
+    # or if the transcript text is completely empty/whitespace,
+    # then nothing was spoken. The fluency score must be exactly 0.0.
+    if rms_energy < 0.008 or len(words) < 3 or not transcript_text.strip():
+        print("🚨 Silent or ambient recording intercepted! Enforcing strict 0.0 fluency score.")
         return {
-            "fluencyScore": 0, "speechRateWPM": 0, "speechRateAssessment": "insufficient_data",
+            "fluencyScore": 0.0, "speechRateWPM": 0, "speechRateAssessment": "insufficient_data",
             "repetitionCount": 0, "pauseCount": 0, "fillerCount": 0,
             "repetitions": [], "pauses": [], "fillers": [],
-            "totalWords": 0, "durationSeconds": duration, "detectedStutters": []
+            "totalWords": len(words), "durationSeconds": duration, "detectedStutters": []
         }
 
     advanced_stutters = []
