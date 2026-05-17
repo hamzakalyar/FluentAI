@@ -137,8 +137,9 @@ def transcribe_audio(audio_path):
     valid_text_segments = []
     
     for segment in result.get("segments", []):
-        # Explicitly drop segments that Whisper is unsure about (silence/noise)
-        if segment.get("no_speech_prob", 0.0) > 0.4:
+        # Explicitly drop segments that Whisper is extremely sure are silence/noise
+        # Increased threshold from 0.4 to 0.85 to prevent dropping hesitant/shaky stuttered speech
+        if segment.get("no_speech_prob", 0.0) > 0.85:
             continue
             
         segment_text = segment.get("text", "").strip()

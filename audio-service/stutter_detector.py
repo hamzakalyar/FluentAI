@@ -27,22 +27,34 @@ def detect_repetitions(words):
     if not words or len(words) < 2:
         return {"count": 0, "total_repeated": 0, "repetitions": []}
     
+    FILLER_WORDS = {"um", "uh", "er", "ah", "eh", "hmm", "hm", "mm", "like"}
     repetitions = []
     i = 0
     while i < len(words):
         current = words[i]["word"].lower().strip(".,!?;:'\"")
-        if len(current) == 0:
+        if len(current) == 0 or current in FILLER_WORDS:
             i += 1
             continue
         
         repeat_count = 1
         indices = [i]
         j = i + 1
+        skipped_fillers = 0
+        
         while j < len(words):
             next_word = words[j]["word"].lower().strip(".,!?;:'\"")
+            if len(next_word) == 0:
+                j += 1
+                continue
+                
             if next_word == current:
                 repeat_count += 1
                 indices.append(j)
+                j += 1
+                skipped_fillers = 0  # Reset skipped filler counter
+            elif next_word in FILLER_WORDS and skipped_fillers == 0:
+                # Allow skipping at most one filler word between repeats (e.g., 'I um I')
+                skipped_fillers += 1
                 j += 1
             else:
                 break
@@ -54,7 +66,9 @@ def detect_repetitions(words):
                 "position": words[i]["start"],
                 "indices": indices
             })
-        i = j if repeat_count >= 2 else i + 1
+            i = j
+        else:
+            i += 1
     
     total_repeated = sum(r["times"] - 1 for r in repetitions)
     return {
@@ -215,32 +229,32 @@ def calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rat
     if total_words == 0:
         return 0.0
 
-    # 1. Calculate weighted penalty total (P_total) - Balanced Weights
+    # 1. Calculate weighted penalty total (P_total) - Stricter clinical weights
     p_total = 0.0
-    p_total += repetition_data["count"] * 7.0  # Middle ground
-    p_total += pause_data["count"] * 3.0       # Middle ground
-    p_total += filler_data["count"] * 1.5       # Middle ground
+    p_total += repetition_data["count"] * 8.5  # Increased from 7.0
+    p_total += pause_data["count"] * 4.0       # Increased from 3.0
+    p_total += filler_data["count"] * 2.0       # Increased from 1.5
     
     if advanced_stutters:
         for s in advanced_stutters:
             if s["type"] in ["block", "prolongation"]:
-                p_total += 9.0  # Middle ground
+                p_total += 10.5  # Increased from 9.0
             elif s["type"] in ["replace", "missing"]:
-                p_total += 4.5  # Middle ground
+                p_total += 5.5   # Increased from 4.5
     
-    # 2. Normalized Scoring Formula - Balanced Constant
+    # 2. Normalized Scoring Formula - Stricter density constant
     # S = max(0, 100 - ((P_total / N) * k))
-    k = 12.5  # Re-centered for meaningful feedback
+    k = 14.5  # Increased from 12.5 to make penalties feel tighter
     density_penalty = (p_total / total_words) * k
     score = 100.0 - density_penalty
     
-    # 3. Handle Speech Rate (WPM) with 15s Threshold
+    # 3. Stricter Speech Rate (WPM) handling with a 10s threshold (lowered from 15s)
     wpm = speech_rate_data["wpm"]
-    if duration >= 15.0 and wpm > 0:
-        if wpm < 100:
-            score -= (100 - wpm) / 5.5
-        elif wpm > 185:
-            score -= (wpm - 185) / 7
+    if duration >= 10.0 and wpm > 0:
+        if wpm < 110:  # Shifted from < 100 WPM
+            score -= (110 - wpm) / 4.5  # Stricter penalty divisor (increased impact)
+        elif wpm > 175:  # Shifted from > 185 WPM
+            score -= (wpm - 175) / 5.5  # Stricter penalty divisor
             
     return round(max(0, min(100, score)), 1)
 
@@ -318,6 +332,23 @@ def _build_stutter_timeline(repetition_data, pause_data, filler_data, audio_rep_
     else:
         for r in repetition_data["repetitions"]:
             timeline.append({"type": "repetition", "word": r["word"], "position": r["position"], "details": f"Repeated {r['times']}x"})
+    
+    # Add audio-level plosive and sound bursts
+    if audio_rep_data:
+        for ar in audio_rep_data.get("repetitions", []):
+            # De-duplicate: if a word repetition is already at the same position, skip adding
+            is_duplicate = False
+            for event in timeline:
+                if event["type"] == "repetition" and abs(event["position"] - ar["position"]) < 1.2:
+                    is_duplicate = True
+                    break
+            if not is_duplicate:
+                timeline.append({
+                    "type": "sound_repetition",
+                    "word": None,
+                    "position": ar["position"],
+                    "details": ar["details"]
+                })
     
     for p in pause_data["pauses"]:
         timeline.append({"type": "pause", "word": None, "position": p["position"], "details": f"Pause of {p['durationMs']}ms"})
