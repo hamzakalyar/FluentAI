@@ -112,25 +112,35 @@ def transcribe_audio(audio_path):
         print(f"⚠️ Silence check failed, proceeding to Whisper: {e}")
     
     
-    # Transcribe with word-level timestamps enabled
-    # This is the KEY feature — without word_timestamps, we only get
-    # segment-level timing which is too coarse for stutter detection
-    result = model.transcribe(
-        audio_path,
-        word_timestamps=True,              # CRITICAL: gives us per-word timing
-        language="en",                     # Force English for consistency
-        fp16=False,                        # Use FP32 for CPU compatibility
-        condition_on_previous_text=False,  # CRITICAL: stops Whisper cleaning "I I I" → "I"
-        suppress_blank=False,              # Don't suppress blank/hesitation tokens
-        temperature=0.15,                  # KEY FIX: greedy (0.0) always picks the most
-                                           # probable token = clean English = stutters erased.
-                                           # 0.15 lets lower-prob tokens (repeats) appear.
-        logprob_threshold=-2.0,            # More permissive: don't suppress quiet/uncertain
-                                           # tokens that often represent stuttered sounds
-        no_speech_threshold=0.6,           # Prevent hallucinations on silence
-        compression_ratio_threshold=3.0,   # Allow repetitive output (don't skip stutter segments)
-        initial_prompt="Umm, let me think... I I I want to go. P p p peter."  # Anchors Whisper to disfluent speech patterns
-    )
+    # Disable SDPA (Scaled Dot Product Attention) to force naive attention weights,
+    # which Whisper's word_timestamps alignment hooks require to avoid crashing on newer PyTorch versions.
+    import torch
+    import contextlib
+    
+    try:
+        from torch.nn.attention import sdpa_kernel, SDPBackend
+        sdpa_ctx = sdpa_kernel(SDPBackend.MATH)
+    except Exception as e:
+        print(f"⚠️ PyTorch sdpa_kernel not available, using fallback context: {e}")
+        sdpa_ctx = contextlib.nullcontext()
+        
+    with sdpa_ctx:
+        result = model.transcribe(
+            audio_path,
+            word_timestamps=True,              # CRITICAL: gives us per-word timing
+            language="en",                     # Force English for consistency
+            fp16=False,                        # Use FP32 for CPU compatibility
+            condition_on_previous_text=False,  # CRITICAL: stops Whisper cleaning "I I I" → "I"
+            suppress_blank=False,              # Don't suppress blank/hesitation tokens
+            temperature=0.15,                  # KEY FIX: greedy (0.0) always picks the most
+                                               # probable token = clean English = stutters erased.
+                                               # 0.15 lets lower-prob tokens (repeats) appear.
+            logprob_threshold=-2.0,            # More permissive: don't suppress quiet/uncertain
+                                               # tokens that often represent stuttered sounds
+            no_speech_threshold=0.6,           # Prevent hallucinations on silence
+            compression_ratio_threshold=3.0,   # Allow repetitive output (don't skip stutter segments)
+            initial_prompt="Umm, let me think... I I I want to go. P p p peter."  # Anchors Whisper to disfluent speech patterns
+        )
     
     # Extract word-level data from Whisper's output
     words = []
