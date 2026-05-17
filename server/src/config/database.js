@@ -2,13 +2,13 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    // Safe production diagnostics to print key presence without exposing sensitive passwords
-    console.log("🔍 Diagnostic - Loaded Env Keys:", 
-      Object.keys(process.env).filter(k => k.includes("MONGO") || k.includes("URI") || k.includes("PORT") || k.includes("PYTHON"))
-    );
-    console.log("🔍 Diagnostic - MONGODB_URI type:", typeof process.env.MONGODB_URI);
+    // Automatically fall back to MONGODB_URL if MONGODB_URI is not provided (robust support)
+    const dbUri = process.env.MONGODB_URI || process.env.MONGODB_URL;
 
-    const conn = await mongoose.connect(process.env.MONGODB_URI);
+    console.log("🔍 Diagnostic - Selected Database Key:", process.env.MONGODB_URI ? "MONGODB_URI" : "MONGODB_URL");
+    console.log("🔍 Diagnostic - Selected connection type:", typeof dbUri);
+
+    const conn = await mongoose.connect(dbUri);
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error(`❌ MongoDB Connection Error: ${error.message}`);
