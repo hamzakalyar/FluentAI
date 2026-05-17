@@ -276,9 +276,13 @@ const SessionDetail = () => {
                     }
 
                     // Fallback: plain text when no word tokens exist
+                    const transcriptText = typeof session.transcript === 'string'
+                      ? session.transcript
+                      : session.transcript?.text || '';
+
                     return (
-                      <span className="text-[var(--text-secondary)] italic">
-                        {session.transcript?.text || session.transcript || 'No transcript available.'}
+                      <span className="text-[var(--text-secondary)] italic text-slate-400">
+                        {transcriptText || 'No speech transcribed (silent/empty recording).'}
                       </span>
                     );
                   })()}

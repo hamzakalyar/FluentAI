@@ -18,11 +18,22 @@ if exist "test.wav" del "test.wav"
 if exist "server\test.wav" del "server\test.wav"
 if exist "audio-service\dummy.wav" del "audio-service\dummy.wav"
 
-echo [4/5] Deleting old development scripts...
+echo [4/5] Deleting old development and temporary git scripts...
 if exist "mudassir.md" del "mudassir.md"
 if exist "reset-hamza.js" del "reset-hamza.js"
 if exist "server\reset-hamza.js" del "server\reset-hamza.js"
 if exist "start_all.sh" del "start_all.sh"
+if exist "check_status.bat" del "check_status.bat"
+if exist "resolve_git.bat" del "resolve_git.bat"
+if exist "git_continue.bat" del "git_continue.bat"
+if exist "abort_and_merge.bat" del "abort_and_merge.bat"
+if exist "final_push.bat" del "final_push.bat"
+if exist "git_branch_output.txt" del "git_branch_output.txt"
+if exist "git_diff_output.txt" del "git_diff_output.txt"
+if exist "git_log_output.txt" del "git_log_output.txt"
+if exist "git_show_output.txt" del "git_show_output.txt"
+if exist "stutter_detector_backup.py" del "stutter_detector_backup.py"
+if exist "requirements_backup.txt" del "requirements_backup.txt"
 
 echo [5/5] Deleting legacy test-frontend folder...
 if exist "test-frontend" rd /s /q "test-frontend"
