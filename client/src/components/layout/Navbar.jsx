@@ -3,9 +3,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 
 const LINKS = [
-  { label: "Features", href: "#features" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "About", href: "#about" },
+  { label: "Features", href: "/features" },
+  { label: "How It Works", href: "/how-it-works" },
+  { label: "About", href: "/about" },
 ];
 
 export default function Navbar() {
@@ -73,17 +73,26 @@ export default function Navbar() {
             </div>
           </button>
 
-          {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-10">
             {LINKS.map((l) => (
-              <a
+              <button
                 key={l.label}
-                href={l.href}
+                onClick={() => {
+                  if (l.href.startsWith('#')) {
+                    if (location.pathname !== '/') {
+                      navigate('/' + l.href);
+                    } else {
+                      document.querySelector(l.href)?.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  } else {
+                    navigate(l.href);
+                  }
+                }}
                 className="text-sm font-bold text-slate-500 hover:text-teal-600 transition-all relative group/link"
               >
                 {l.label}
                 <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-teal-500 transition-all group-hover/link:w-full rounded-full" />
-              </a>
+              </button>
             ))}
           </nav>
 
@@ -119,16 +128,26 @@ export default function Navbar() {
           }`}
         >
           <div className="px-8 py-10 flex flex-col gap-8 bg-[var(--bg-surface)] backdrop-blur-xl">
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-6 items-start">
               {LINKS.map((l) => (
-                <a
+                <button
                   key={l.label}
-                  href={l.href}
-                  className="text-2xl font-black text-[var(--text-primary)] transition-colors hover:text-teal-600"
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    setOpen(false);
+                    if (l.href.startsWith('#')) {
+                      if (location.pathname !== '/') {
+                        navigate('/' + l.href);
+                      } else {
+                        document.querySelector(l.href)?.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    } else {
+                      navigate(l.href);
+                    }
+                  }}
+                  className="text-2xl font-black text-[var(--text-primary)] transition-colors hover:text-teal-600 text-left"
                 >
                   {l.label}
-                </a>
+                </button>
               ))}
             </div>
             <div className="flex flex-col gap-4 pt-8 border-t border-[var(--border-subtle)]">

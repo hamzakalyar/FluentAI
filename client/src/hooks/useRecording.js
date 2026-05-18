@@ -105,10 +105,26 @@ export const useRecording = () => {
 
   const startAnalysis = useCallback(async (passageId = null, expectedText = null) => {
     const finalBlob = audioBlob || audioBlobRef.current;
-    if (!finalBlob) return;
+    if (!finalBlob && !localStorage.getItem('is_demo_mode')) return;
     
     setStatus('processing');
     setAnalysisError(null);
+
+    const isDemo = localStorage.getItem('is_demo_mode') === 'true';
+    if (isDemo) {
+      setTimeout(() => {
+        setSessionId('mock-session-1');
+        setAnalysisResults({
+          id: 'mock-session-1',
+          _id: 'mock-session-1',
+          type: 'Evaluation',
+          name: 'Vocal Prompt Evaluation',
+          fluencyScore: 84
+        });
+        setStatus('success');
+      }, 2500);
+      return;
+    }
     
     try {
       const response = await sessionsService.analyzeSession(finalBlob, passageId, expectedText);

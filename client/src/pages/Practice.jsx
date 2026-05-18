@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   Trophy, Target, Zap, Mic, CheckCircle2, 
   RotateCcw, Play, Pause, ChevronRight, Info, 
@@ -366,6 +367,9 @@ const ExerciseCard = ({ exercise, onComplete, isInitiallyCompleted, isActive, on
 };
 
 const Practice = () => {
+  const location = useLocation();
+  const preselectedSound = location.state?.targetSound; // e.g. 'TH', 'P', 'B'
+
   const [completedIds, setCompletedIds] = useState([]);
   const [exercises, setExercises] = useState([]);
   const [difficulty, setDifficulty] = useState('medium');
@@ -379,13 +383,181 @@ const Practice = () => {
   const [activeCardId, setActiveCardId] = useState(null);
   const [showCelebration, setShowCelebration] = useState(false);
 
+  const MOCK_EXERCISES = [
+    {
+      id: 'ex-mock-1',
+      num: 1,
+      title: "Plosive Pressure Reduction",
+      text: "Please prepare the perfect presentation on Tuesday.",
+      tag: "P",
+      difficulty: "Easy"
+    },
+    {
+      id: 'ex-mock-2',
+      num: 2,
+      title: "Voiced Bilabial Soft Murmur",
+      text: "Big brown bears build beautiful blue barriers.",
+      tag: "B",
+      difficulty: "Medium"
+    },
+    {
+      id: 'ex-mock-3',
+      num: 3,
+      title: "Complex Tri-Consonant Release",
+      text: "Try to speak clearly and breathe smoothly through the struggle.",
+      tag: "STR",
+      difficulty: "Hard"
+    }
+  ];
+
+  const MOCK_SOUND_PROGRESS = [
+    {
+      sound: "/p/",
+      averageScore: 84,
+      bestScore: 92,
+      totalAttempts: 8,
+      lastAttempt: new Date().toISOString()
+    },
+    {
+      sound: "/b/",
+      averageScore: 78,
+      bestScore: 86,
+      totalAttempts: 5,
+      lastAttempt: new Date().toISOString()
+    },
+    {
+      sound: "/str/",
+      averageScore: 62,
+      bestScore: 74,
+      totalAttempts: 3,
+      lastAttempt: new Date().toISOString()
+    }
+  ];
+
   const loadPracticeData = async () => {
     setLoading(true);
     setNoWeakSounds(false);
+
+    const isDemo = localStorage.getItem('is_demo_mode') === 'true';
+    if (isDemo) {
+      const activeSound = preselectedSound || 'TH';
+      setUserWeakSounds([activeSound, 'P', 'B']);
+      setTopWeakSound(activeSound);
+      
+      // Dynamically assemble targeted custom drills for the active weak sound
+      let generatedDemo = [];
+      if (activeSound === 'TH') {
+        generatedDemo = [
+          {
+            id: 'ex-th-1',
+            num: 1,
+            title: "Dental Fricative Easy Onset",
+            text: "Think through the therapeutic tongue twisters thoroughly.",
+            tag: "TH",
+            difficulty: "Easy"
+          },
+          {
+            id: 'ex-th-2',
+            num: 2,
+            title: "Soft Contact Continuant Voicing",
+            text: "These thin thistles thorn those thirsty thieves.",
+            tag: "TH",
+            difficulty: "Medium"
+          },
+          {
+            id: 'ex-th-3',
+            num: 3,
+            title: "Phonetic Glide Cohesion",
+            text: "There they go together, thriving through the storm.",
+            tag: "TH",
+            difficulty: "Hard"
+          }
+        ];
+      } else if (activeSound === 'P') {
+        generatedDemo = [
+          {
+            id: 'ex-p-1',
+            num: 1,
+            title: "Plosive Pressure Reduction",
+            text: "Please prepare the perfect presentation on Tuesday.",
+            tag: "P",
+            difficulty: "Easy"
+          },
+          {
+            id: 'ex-p-2',
+            num: 2,
+            title: "Light Contacts Onset",
+            text: "Peter Piper picked a peck of pickled peppers.",
+            tag: "P",
+            difficulty: "Medium"
+          },
+          {
+            id: 'ex-p-3',
+            num: 3,
+            title: "Continuous Airflow Integration",
+            text: "Purple paper plates push people toward perfect pacing.",
+            tag: "P",
+            difficulty: "Hard"
+          }
+        ];
+      } else if (activeSound === 'B') {
+        generatedDemo = [
+          {
+            id: 'ex-b-1',
+            num: 1,
+            title: "Voiced Bilabial Soft Murmur",
+            text: "Big brown bears build beautiful blue barriers.",
+            tag: "B",
+            difficulty: "Easy"
+          },
+          {
+            id: 'ex-b-2',
+            num: 2,
+            title: "Co-articulation Transition",
+            text: "Baker boys blow bright bubbles behind the barn.",
+            tag: "B",
+            difficulty: "Medium"
+          },
+          {
+            id: 'ex-b-3',
+            num: 3,
+            title: "Voicing Continuity Velocity",
+            text: "Brave brothers bring bright books back to Boston.",
+            tag: "B",
+            difficulty: "Hard"
+          }
+        ];
+      } else {
+        generatedDemo = [
+          {
+            id: 'ex-gen-1',
+            num: 1,
+            title: `Custom ${activeSound} Drill`,
+            text: `Sally sings sweet songs on sunny summer Sundays.`,
+            tag: activeSound,
+            difficulty: "Medium"
+          }
+        ];
+      }
+      setExercises(generatedDemo);
+      
+      const mergedProgress = MOCK_SOUND_PROGRESS.map((sp, idx) => ({
+        id: `mastery-${sp.sound}-${idx}`,
+        sound: sp.sound,
+        averageScore: sp.averageScore,
+        bestScore: sp.bestScore,
+        totalAttempts: sp.totalAttempts,
+        lastAttempt: sp.lastAttempt
+      }));
+      setSoundProgress(mergedProgress);
+      setLoading(false);
+      return;
+    }
+
     try {
       // Step 1: Get user's detected weak sounds from analytics (recordings)
       const summaryRes = await analyticsService.getSummary().catch(() => ({ data: {} }));
-      const detectedWeakSounds = (summaryRes?.data?.topWeakSounds || [])
+      const detectedWeakSounds = preselectedSound ? [preselectedSound] : (summaryRes?.data?.topWeakSounds || [])
         .map(ws => ws?.sound)
         .filter(Boolean);
       
@@ -539,6 +711,34 @@ const Practice = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {preselectedSound && (
+        <motion.div 
+          initial={{ opacity: 0, y: -15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 p-4 bg-teal-500/10 border border-teal-500/20 rounded-2xl flex items-center justify-between gap-4 shadow-sm"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🎯</span>
+            <div>
+              <h4 className="text-[12px] font-black text-teal-700 uppercase tracking-wider">Sound Focus Mode Active</h4>
+              <p className="text-xs text-[var(--text-secondary)] font-medium mt-0.5">
+                We've customized your Practice Engine to target <strong>/{preselectedSound}/</strong> sounds, as recommended by your speech therapist.
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => {
+              navigate(location.pathname, { replace: true, state: {} });
+              // Trigger reload
+              setTimeout(() => window.location.reload(), 100);
+            }}
+            className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] hover:text-rose-500 border border-[var(--border-subtle)] hover:border-rose-400/30 px-3 py-1.5 rounded-xl bg-[var(--bg-surface)] transition-all shrink-0"
+          >
+            Clear Focus
+          </button>
+        </motion.div>
+      )}
 
       <div className="relative mb-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">

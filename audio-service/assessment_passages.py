@@ -387,7 +387,7 @@ ASSESSMENT_PASSAGES = {
 
 def get_all_passages():
     """
-    Return all available assessment passages (metadata only, no full text).
+    Return all available assessment passages with full text.
     Used by the frontend to show a list of passages to choose from.
     """
     passages = []
@@ -399,8 +399,8 @@ def get_all_passages():
             "difficulty": passage["difficulty"],
             "estimatedDuration": passage["estimatedDuration"],
             "targetSounds": passage["targetSounds"],
-            "text": passage["text"],
-            "wordCount": passage["wordCount"]
+            "wordCount": passage["wordCount"],
+            "text": passage["text"]
         })
     return passages
 

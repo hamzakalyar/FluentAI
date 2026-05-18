@@ -11,8 +11,42 @@ const WPMTrendChart = ({ initialRange = '7D' }) => {
   const [loading, setLoading] = useState(true);
 
   React.useEffect(() => {
+    const MOCK_DEMO_CHART_DATA = {
+      '7d': [
+        { day: 'MON', score: 72 },
+        { day: 'TUE', score: 78 },
+        { day: 'WED', score: 75 },
+        { day: 'THU', score: 82 },
+        { day: 'FRI', score: 80 },
+        { day: 'SAT', score: 85 },
+        { day: 'SUN', score: 84 },
+      ],
+      '30d': [
+        { day: 'MAY 1', score: 65 },
+        { day: 'MAY 5', score: 70 },
+        { day: 'MAY 10', score: 68 },
+        { day: 'MAY 15', score: 74 },
+        { day: 'MAY 20', score: 79 },
+        { day: 'MAY 25', score: 82 },
+        { day: 'MAY 30', score: 84 },
+      ],
+      '90d': [
+        { day: 'MAR', score: 58 },
+        { day: 'APR', score: 68 },
+        { day: 'MAY', score: 84 },
+      ]
+    };
+
     const fetchData = async () => {
       setLoading(true);
+      const isDemo = localStorage.getItem('is_demo_mode') === 'true';
+      if (isDemo) {
+        const timeframe = range.toLowerCase();
+        setData(MOCK_DEMO_CHART_DATA[timeframe] || MOCK_DEMO_CHART_DATA['7d']);
+        setLoading(false);
+        return;
+      }
+
       try {
         const timeframe = range.toLowerCase(); // '7d', '30d', etc.
         const res = await analyticsService.getHistorical(timeframe);

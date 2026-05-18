@@ -313,14 +313,11 @@ def get_exercises(weak_sounds, difficulty="easy", count=5):
     for sound in weak_sounds:
         sound_upper = sound.upper()
         
-        # Map voiced 'TH' (DH) to the 'TH' database of exercises
-        db_sound = "TH" if sound_upper == "DH" else sound_upper
-        
-        if db_sound not in EXERCISE_DATABASE:
+        if sound_upper not in EXERCISE_DATABASE:
             continue
         
         # Get sentences for this sound and difficulty
-        sentences = EXERCISE_DATABASE[db_sound].get(difficulty, [])
+        sentences = EXERCISE_DATABASE[sound_upper].get(difficulty, [])
         
         if not sentences:
             continue
@@ -330,7 +327,7 @@ def get_exercises(weak_sounds, difficulty="easy", count=5):
         
         for sentence in selected:
             # Find words in the sentence that start with the target sound
-            target_words = _find_target_words(sentence, db_sound)
+            target_words = _find_target_words(sentence, sound_upper)
             
             exercises.append({
                 "targetSound": sound_upper,
@@ -359,12 +356,8 @@ def _find_target_words(sentence, target_phoneme):
     for word in sentence.split():
         clean_word = word.strip(".,!?;:'\"").lower()
         onset = get_onset_phoneme(clean_word)
-        if onset:
-            onset_upper = onset.upper()
-            # Group voiced TH (DH) with unvoiced TH (TH)
-            db_onset = "TH" if onset_upper == "DH" else onset_upper
-            if db_onset == target_phoneme.upper():
-                target_words.append(clean_word)
+        if onset and onset == target_phoneme:
+            target_words.append(clean_word)
     
     return target_words
 

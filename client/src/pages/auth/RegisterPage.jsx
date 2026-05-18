@@ -183,7 +183,7 @@ const RegisterPage = ({ isUnified = false }) => {
           <div className="pt-2">
             <Button
               type="submit"
-              isLoading={isLoading}
+              loading={isLoading}
               className="w-full h-12 rounded-xl font-black text-sm shadow-lg shadow-teal-500/20"
             >
               Create account <ArrowRight size={16} className="ml-2" />

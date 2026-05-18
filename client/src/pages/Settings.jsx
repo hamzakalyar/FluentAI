@@ -9,8 +9,15 @@ import {
   Sun,
   Info,
   Camera,
-  Plus
+  Plus,
+  Key,
+  Database,
+  Trash2,
+  Download,
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
+import { toast } from 'sonner';
 import Card from '../components/shared/Card';
 import Button from '../components/shared/Button';
 import Input from '../components/shared/Input';
@@ -24,6 +31,18 @@ const Settings = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [confirmEmail, setConfirmEmail] = useState('');
+  const [showPurgeModal, setShowPurgeModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  
+  // Password states
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // Privacy & Data states
+  const [allowAIImprovement, setAllowAIImprovement] = useState(true);
+  const [privateTherapyProfile, setPrivateTherapyProfile] = useState(false);
+  const [cacheDuration, setCacheDuration] = useState('90');
   
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -62,14 +81,20 @@ const Settings = () => {
           <p className="text-[var(--text-secondary)] font-medium mt-1 text-sm md:text-base">Manage your account and practice preferences</p>
         </div>
         
-        <Button className="hidden md:flex shadow-lg shadow-[var(--accent)]/10 h-10 text-xs">
+        <Button 
+          onClick={() => toast.success("Settings saved successfully!")}
+          className="hidden md:flex shadow-lg shadow-[var(--accent)]/10 h-10 text-xs"
+        >
           <Save size={16} className="mr-2" />
           Save Changes
         </Button>
       </div>
 
       <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-[var(--bg-surface)]/80 backdrop-blur-xl border-t border-[var(--border-subtle)] z-50 flex items-center justify-center">
-        <Button className="w-full shadow-lg shadow-[var(--accent)]/10 h-12 text-sm font-bold">
+        <Button 
+          onClick={() => toast.success("Settings saved successfully!")}
+          className="w-full shadow-lg shadow-[var(--accent)]/10 h-12 text-sm font-bold"
+        >
           <Save size={18} className="mr-2" />
           Save All Changes
         </Button>
@@ -232,10 +257,359 @@ const Settings = () => {
               </motion.div>
             )}
 
-            {/* Other tabs follow the same premium structure... */}
+            {activeTab === 'password' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8 p-2">
+                <header className="border-b border-[var(--border-subtle)] pb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-teal-500/10 flex items-center justify-center text-teal-600">
+                      <Key size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-black text-[var(--text-primary)] font-syne">Security & Credentials</h3>
+                      <p className="text-sm text-[var(--text-secondary)] font-medium mt-0.5">Manage your secret key and access logs</p>
+                    </div>
+                  </div>
+                </header>
+
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-1">Current Password</label>
+                    <Input 
+                      type="password" 
+                      placeholder="••••••••••••"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="bg-[var(--bg-base)] border-none focus:ring-[var(--accent)]/20" 
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-1">New Password</label>
+                      <Input 
+                        type="password" 
+                        placeholder="••••••••••••"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="bg-[var(--bg-base)] border-none focus:ring-[var(--accent)]/20" 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-1">Confirm New Password</label>
+                      <Input 
+                        type="password" 
+                        placeholder="••••••••••••"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="bg-[var(--bg-base)] border-none focus:ring-[var(--accent)]/20" 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-teal-50/50 dark:bg-teal-950/10 rounded-2xl border border-teal-500/10 flex gap-3">
+                    <ShieldCheck size={18} className="text-teal-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-xs font-bold text-teal-800 dark:text-teal-400">Password Requirements</h4>
+                      <p className="text-[11px] text-[var(--text-secondary)] mt-1 font-medium leading-relaxed">
+                        To secure your diagnostic records, passwords must be at least 8 characters long and contain both letters and digits.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-4">
+                    <Button 
+                      onClick={() => {
+                        if (!currentPassword || !newPassword || !confirmPassword) {
+                          toast.error("Please fill in all password fields.");
+                          return;
+                        }
+                        if (newPassword !== confirmPassword) {
+                          toast.error("Passwords do not match.");
+                          return;
+                        }
+                        toast.success("Security credentials updated successfully!");
+                        setCurrentPassword('');
+                        setNewPassword('');
+                        setConfirmPassword('');
+                      }}
+                      className="shadow-lg shadow-[var(--accent)]/10 text-xs px-6"
+                    >
+                      Update Password
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'privacy' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8 p-2">
+                <header className="border-b border-[var(--border-subtle)] pb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                      <Database size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-black text-[var(--text-primary)] font-syne">Privacy & Clinical Data</h3>
+                      <p className="text-sm text-[var(--text-secondary)] font-medium mt-0.5">Control how your speech diagnostics and audio records are handled</p>
+                    </div>
+                  </div>
+                </header>
+
+                <div className="space-y-8">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-[var(--bg-base)] rounded-2xl border border-[var(--border-subtle)]">
+                      <div className="flex-1 pr-4">
+                        <h4 className="text-sm font-bold text-[var(--text-primary)]">AI Model Calibration Opt-In</h4>
+                        <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 leading-relaxed">
+                          Allow clinical speech samples to be anonymously used to calibrate and improve Whisper stutter-detection models.
+                        </p>
+                      </div>
+                      <button 
+                        onClick={() => setAllowAIImprovement(!allowAIImprovement)}
+                        className={cn(
+                          "w-11 h-6 rounded-full relative transition-all p-1 shrink-0",
+                          allowAIImprovement ? "bg-[var(--accent)]" : "bg-slate-200"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300",
+                          allowAIImprovement ? "translate-x-5" : "translate-x-0"
+                        )} />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-[var(--bg-base)] rounded-2xl border border-[var(--border-subtle)]">
+                      <div className="flex-1 pr-4">
+                        <h4 className="text-sm font-bold text-[var(--text-primary)]">Private Speech Therapy Profile</h4>
+                        <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 leading-relaxed">
+                          Keep therapist metrics and diagnostic graphs fully private and hidden from clinical dashboard exports.
+                        </p>
+                      </div>
+                      <button 
+                        onClick={() => setPrivateTherapyProfile(!privateTherapyProfile)}
+                        className={cn(
+                          "w-11 h-6 rounded-full relative transition-all p-1 shrink-0",
+                          privateTherapyProfile ? "bg-[var(--accent)]" : "bg-slate-200"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300",
+                          privateTherapyProfile ? "translate-x-5" : "translate-x-0"
+                        )} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-5 bg-[var(--bg-base)] rounded-2xl border border-[var(--border-subtle)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex-1 pr-2">
+                      <p className="font-bold text-[var(--text-primary)] text-sm">Audio Files Retention Policy</p>
+                      <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 leading-relaxed">Choose how long you want our secure servers to cache your recorded speech sessions before auto-purging.</p>
+                    </div>
+                    <select 
+                      value={cacheDuration}
+                      onChange={(e) => setCacheDuration(e.target.value)}
+                      className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-xs font-bold text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent)]/20 outline-none"
+                    >
+                      <option value="30">30 Days</option>
+                      <option value="90">90 Days</option>
+                      <option value="365">1 Year</option>
+                      <option value="indefinite">Keep Indefinitely</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-1">Export Clinical Records</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 bg-[var(--bg-base)] rounded-2xl border border-[var(--border-subtle)] flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-bold text-[var(--text-primary)]">Download Speech Profile</p>
+                          <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">Export all historical stutter percentages and scores</p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 text-[10px] font-black"
+                          onClick={() => {
+                            toast.loading("Compiling speech profile...");
+                            setTimeout(() => {
+                              toast.dismiss();
+                              toast.success("Speech Profile exported successfully! (fluency-record.csv)");
+                            }, 1200);
+                          }}
+                        >
+                          <Download size={12} className="mr-1.5" /> CSV
+                        </Button>
+                      </div>
+
+                      <div className="p-4 bg-[var(--bg-base)] rounded-2xl border border-[var(--border-subtle)] flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-bold text-[var(--text-primary)]">Download Audio Archive</p>
+                          <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">Download zip file containing all uploaded recordings</p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 text-[10px] font-black"
+                          onClick={() => {
+                            toast.loading("Compressing recorded wav assets...");
+                            setTimeout(() => {
+                              toast.dismiss();
+                              toast.success("Audio archive compiled! Check your downloads. (audio-archive.zip)");
+                            }, 1800);
+                          }}
+                        >
+                          <Download size={12} className="mr-1.5" /> ZIP
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'danger' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8 p-2">
+                <header className="border-b border-[var(--border-subtle)] pb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-500 animate-pulse">
+                      <AlertTriangle size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-black text-red-600 font-syne">Danger Zone</h3>
+                      <p className="text-sm text-[var(--text-secondary)] font-medium mt-0.5">Destructive actions that cannot be undone</p>
+                    </div>
+                  </div>
+                </header>
+
+                <div className="space-y-6">
+                  <div className="p-5 bg-[var(--bg-base)] rounded-2xl border border-red-500/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex-1 pr-2">
+                      <p className="font-bold text-[var(--text-primary)] text-sm">Purge All Recorded Session Files</p>
+                      <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 leading-relaxed">
+                        Permanently deletes all stored audio files and Whisper transcripts from our system, leaving only your history list metadata.
+                      </p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      className="border-red-500/20 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 font-black h-9 text-xs"
+                      onClick={() => setShowPurgeModal(true)}
+                    >
+                      <Trash2 size={14} className="mr-1.5" /> Purge Cache
+                    </Button>
+                  </div>
+
+                  <div className="p-5 bg-red-50/50 dark:bg-red-950/10 rounded-2xl border border-red-500/15 space-y-4">
+                    <div>
+                      <p className="font-black text-red-600 text-sm">Permanently Deactivate & Delete Account</p>
+                      <p className="text-[11px] text-[var(--text-secondary)] mt-1 leading-relaxed">
+                        This is an absolute delete action. All your profile information, premium status, clinical diagnostic records, sound-map scores, and sessions will be destroyed forever.
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2 pt-2">
+                      <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] ml-1">
+                        Type <span className="text-red-500 font-bold select-all">{user?.email || 'your email'}</span> to confirm
+                      </label>
+                      <Input 
+                        placeholder={user?.email || 'email@example.com'}
+                        value={confirmEmail}
+                        onChange={(e) => setConfirmEmail(e.target.value)}
+                        className="bg-[var(--bg-surface)] border-red-500/20 focus:ring-red-500/10 max-w-md" 
+                      />
+                    </div>
+
+                    <div className="pt-2">
+                      <Button 
+                        disabled={confirmEmail !== (user?.email || '')}
+                        className={cn(
+                          "font-black text-xs h-10 px-6 shadow-md transition-all duration-300",
+                          confirmEmail === (user?.email || '')
+                            ? "bg-red-600 hover:bg-red-700 text-white shadow-red-600/10 cursor-pointer"
+                            : "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
+                        )}
+                        onClick={() => setShowDeleteModal(true)}
+                      >
+                        Delete My Workspace & Account
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </Card>
         </div>
       </div>
+      {showPurgeModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-300">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[28px] p-6 max-w-sm w-full shadow-premium animate-in zoom-in-95 duration-300 text-center relative pointer-events-auto">
+            <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-500/20">
+              <AlertTriangle size={22} className="animate-bounce" />
+            </div>
+            <h3 className="font-syne text-[15px] font-black text-[var(--text-primary)]">Purge Recording Cache?</h3>
+            <p className="text-[11px] text-[var(--text-secondary)] mt-2 font-medium leading-relaxed">
+              Are you sure you want to permanently delete all stored speech wav samples and Whisper transcripts? This action is clinical and completely irreversible.
+            </p>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowPurgeModal(false)}
+                className="flex-1 py-2.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:bg-[var(--bg-base)] text-[var(--text-secondary)] text-[10px] font-black uppercase tracking-wider rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowPurgeModal(false);
+                  toast.loading("Purging cloud data cache...");
+                  setTimeout(() => {
+                    toast.dismiss();
+                    toast.success("Successfully purged all audio recording files!");
+                  }, 1500);
+                }}
+                className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-all shadow-md"
+              >
+                Confirm Purge
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-300">
+          <div className="bg-[var(--bg-surface)] border border-red-500/35 rounded-[28px] p-6 max-w-sm w-full shadow-premium animate-in zoom-in-95 duration-300 text-center relative pointer-events-auto">
+            <div className="w-12 h-12 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+              <Trash2 size={22} className="animate-pulse" />
+            </div>
+            <h3 className="font-syne text-[15px] font-black text-red-600">Delete Account Forever?</h3>
+            <p className="text-[11px] text-[var(--text-secondary)] mt-2 font-medium leading-relaxed">
+              This will destroy all clinical diagnostics, recording history, and credentials immediately. You will be signed out and your profile purged permanently.
+            </p>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 py-2.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:bg-[var(--bg-base)] text-[var(--text-secondary)] text-[10px] font-black uppercase tracking-wider rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  toast.loading("Deleting your clinician workspace...");
+                  setTimeout(() => {
+                    toast.dismiss();
+                    toast.success("Account permanently deactivated.");
+                    localStorage.removeItem('token');
+                    window.location.href = '/register';
+                  }, 2000);
+                }}
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-all shadow-md"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };

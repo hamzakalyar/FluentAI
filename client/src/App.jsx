@@ -1,6 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
+import HowItWorks from './pages/HowItWorks';
+import Features from './pages/Features';
+import About from './pages/About';
 import UnifiedAuth from './pages/auth/UnifiedAuth';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
@@ -39,6 +42,9 @@ function App() {
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/features" element={<Features />} />
+          <Route path="/about" element={<About />} />
 
           {/* Protected Routes */}
           <Route element={

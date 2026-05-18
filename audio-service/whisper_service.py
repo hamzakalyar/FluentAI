@@ -32,8 +32,6 @@ HOW IT WORKS:
 import whisper
 import os
 import json
-import librosa
-import numpy as np
 
 # Global model variable — loaded once, reused for all requests
 _model = None
@@ -94,62 +92,31 @@ def transcribe_audio(audio_path):
     """
     model = load_model()
     
-    # Pre-processing: Check if audio is completely silent before running Whisper
-    # This completely prevents all "hallucination loops" and saves processing time.
-    try:
-        audio_data, sr = librosa.load(audio_path, sr=16000)
-        max_amp = np.max(np.abs(audio_data))
-        if max_amp < 0.0001:  # Absolute silence (dead mic)
-            print("🔇 Absolute silence detected. Skipping Whisper transcription.")
-            duration = len(audio_data) / sr if sr > 0 else 0.0
-            return {
-                "text": "",
-                "words": [],
-                "language": "en",
-                "duration": round(duration, 2)
-            }
-    except Exception as e:
-        print(f"⚠️ Silence check failed, proceeding to Whisper: {e}")
-    
-    
-    # Disable SDPA (Scaled Dot Product Attention) to force naive attention weights,
-    # which Whisper's word_timestamps alignment hooks require to avoid crashing on newer PyTorch versions.
-    import torch
-    import contextlib
-    
-    try:
-        from torch.nn.attention import sdpa_kernel, SDPBackend
-        sdpa_ctx = sdpa_kernel(SDPBackend.MATH)
-    except Exception as e:
-        print(f"⚠️ PyTorch sdpa_kernel not available, using fallback context: {e}")
-        sdpa_ctx = contextlib.nullcontext()
-        
-    with sdpa_ctx:
-        result = model.transcribe(
-            audio_path,
-            word_timestamps=True,              # CRITICAL: gives us per-word timing
-            language="en",                     # Force English for consistency
-            fp16=False,                        # Use FP32 for CPU compatibility
-            condition_on_previous_text=False,  # CRITICAL: stops Whisper cleaning "I I I" → "I"
-            suppress_blank=False,              # Don't suppress blank/hesitation tokens
-            temperature=0.15,                  # KEY FIX: greedy (0.0) always picks the most
-                                               # probable token = clean English = stutters erased.
-                                               # 0.15 lets lower-prob tokens (repeats) appear.
-            logprob_threshold=-2.0,            # More permissive: don't suppress quiet/uncertain
-                                               # tokens that often represent stuttered sounds
-            no_speech_threshold=0.6,           # Prevent hallucinations on silence
-            compression_ratio_threshold=3.0,   # Allow repetitive output (don't skip stutter segments)
-            initial_prompt="Umm, let me think... I I I want to go. P p p peter."  # Anchors Whisper to disfluent speech patterns
-        )
+    # Transcribe with word-level timestamps enabled
+    # This is the KEY feature — without word_timestamps, we only get
+    # segment-level timing which is too coarse for stutter detection
+    result = model.transcribe(
+        audio_path,
+        word_timestamps=True,              # CRITICAL: gives us per-word timing
+        language="en",                     # Force English for consistency
+        fp16=False,                        # Use FP32 for CPU compatibility
+        condition_on_previous_text=False,  # CRITICAL: Prevents Whisper from using context
+                                           # to "clean up" repetitions. Without this, 
+                                           # "I I I want" becomes "I want"
+        suppress_blank=False,              # Don't suppress blank/hesitation tokens
+        temperature=0.0,                   # Use greedy decoding for raw accuracy
+        no_speech_threshold=0.6,           # Default threshold to prevent hallucinations on silence
+        compression_ratio_threshold=3.0,   # Higher tolerance — don't skip "repetitive" segments
+        initial_prompt="Umm, let me think... I I I want to go." # Helps anchor the model to English and dysfluent speech, reducing YouTube subtitle hallucinations.
+    )
     
     # Extract word-level data from Whisper's output
     words = []
     valid_text_segments = []
     
     for segment in result.get("segments", []):
-        # Explicitly drop segments that Whisper is extremely sure are silence/noise
-        # Increased threshold from 0.4 to 0.85 to prevent dropping hesitant/shaky stuttered speech
-        if segment.get("no_speech_prob", 0.0) > 0.85:
+        # Explicitly drop segments that Whisper is unsure about (silence/noise)
+        if segment.get("no_speech_prob", 0.0) > 0.4:
             continue
             
         segment_text = segment.get("text", "").strip()
@@ -165,28 +132,12 @@ def transcribe_audio(audio_path):
     final_text = " ".join(valid_text_segments).strip()
     
     # Post-processing: Filter out common Whisper hallucinations for short audio
-    hallucinations = [
-        "thank you", "subscribe", "amara.org", "i'm sorry", "thanks for watching", "bye",
-        "umm, let me think", "i i i want to go"
-    ]
-    
-    is_hallucination = False
-    lower_text = final_text.lower()
-    
+    hallucinations = ["thank you", "subscribe", "amara.org", "i'm sorry", "thanks for watching", "bye"]
     if len(final_text.split()) < 8:
+        lower_text = final_text.lower()
         if any(h in lower_text for h in hallucinations):
-            is_hallucination = True
-    else:
-        # Check for infinite loop of the initial prompt words (classic Whisper silence failure)
-        import re
-        clean_words = set(re.findall(r'[a-z]+', lower_text))
-        prompt_words = {"i", "want", "to", "go", "umm", "let", "me", "think"}
-        if len(clean_words) > 0 and clean_words.issubset(prompt_words):
-            is_hallucination = True
-
-    if is_hallucination:
-        final_text = ""
-        words = []
+            final_text = ""
+            words = []
     
     # Calculate total audio duration
     duration = 0.0

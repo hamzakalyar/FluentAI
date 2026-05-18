@@ -15,6 +15,7 @@ const sessionRoutes = require('./routes/session.routes');
 const { assessmentRouter } = require('./routes/session.routes');
 const practiceRoutes = require('./routes/practice.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
+const assistantRoutes = require('./routes/assistant.routes');
 
 const app = express();
 
@@ -22,7 +23,9 @@ const app = express();
 connectDB();
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(cors({
   origin: [
     'http://localhost:5173',   // React/Vite frontend
@@ -44,6 +47,7 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/api/assessment-passages', assessmentRouter);
 app.use('/api/practice', practiceRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/assistant', assistantRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

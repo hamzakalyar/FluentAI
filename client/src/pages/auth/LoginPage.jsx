@@ -28,7 +28,7 @@ const LoginPage = ({ isUnified = false }) => {
   const [isLoading,   setIsLoading]   = useState(false);
   const [showPass,    setShowPass]    = useState(false);
   const [serverError, setServerError] = useState('');
-  const { login } = useAuth();
+  const { login, loginDemo } = useAuth();
   const navigate  = useNavigate();
 
   const { register, handleSubmit, formState: { errors } } = useForm({
@@ -103,11 +103,23 @@ const LoginPage = ({ isUnified = false }) => {
       {/* Submit */}
       <Button
         type="submit"
-        isLoading={isLoading}
+        loading={isLoading}
         className="w-full h-12 rounded-xl font-black text-sm shadow-lg shadow-teal-500/20"
       >
         Sign in <ArrowRight size={16} className="ml-2" />
       </Button>
+
+      {/* Guest Demo Bypass */}
+      <button
+        type="button"
+        onClick={() => {
+          loginDemo();
+          navigate('/dashboard');
+        }}
+        className="w-full h-12 mt-2 rounded-xl border border-teal-500/30 text-teal-600 bg-white font-black text-sm hover:bg-teal-50 transition-all flex items-center justify-center gap-2 shadow-sm"
+      >
+        <span>✨</span> Try Demo Guest Account
+      </button>
     </form>
   );
 

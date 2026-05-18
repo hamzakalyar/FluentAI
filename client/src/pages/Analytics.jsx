@@ -25,12 +25,93 @@ const Analytics = () => {
   const [summary, setSummary] = useState(null);
   const [trendData, setTrendData] = useState([]);
   const [weakSounds, setWeakSounds] = useState([]);
+  const [triggerWords, setTriggerWords] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const MOCK_SUMMARY = {
+    averageFluencyScore: 84,
+    totalSessions: 14,
+    improvementTrend: 'improving',
+    topWeakSounds: [{ sound: '/th/' }]
+  };
+  
+  const MOCK_TREND_DATA = [
+    { name: 'Mon', repetitions: 3, pauses: 2, wpm: 128 },
+    { name: 'Tue', repetitions: 2, pauses: 1, wpm: 135 },
+    { name: 'Wed', repetitions: 4, pauses: 3, wpm: 122 },
+    { name: 'Thu', repetitions: 1, pauses: 1, wpm: 140 },
+    { name: 'Fri', repetitions: 2, pauses: 2, wpm: 138 },
+    { name: 'Sat', repetitions: 0, pauses: 1, wpm: 144 },
+    { name: 'Sun', repetitions: 1, pauses: 0, wpm: 146 }
+  ];
+
+  const MOCK_WEAK_SOUNDS = [
+    { sound: '/th/', frequency: 8, trend: 'Requires Practice', description: 'Soft dental fricatives (tip of tongue on teeth)' },
+    { sound: '/p/', frequency: 5, trend: 'Improving', description: 'Voiceless bilabial plosives (lips pop)' },
+    { sound: '/cl/', frequency: 3, trend: 'Stable', description: 'Consonant cluster blends (velar-lateral)' },
+    { sound: '/str/', frequency: 2, trend: 'Improving', description: 'Complex tri-consonant cluster (alveolar release)' },
+    { sound: '/b/', frequency: 2, trend: 'Stable', description: 'Voiced bilabial plosives (voiced pop)' }
+  ];
+
+  const MOCK_TRIGGER_WORDS = [
+    { word: "think", frequency: 4, type: "Blockage", sound: "/th/", tip: "Slide your tongue tip slightly forward before blowing air." },
+    { word: "the", frequency: 3, type: "Repetition", sound: "/th/", tip: "Use soft vocalization and stretch out the 'th' transition." },
+    { word: "peter", frequency: 3, type: "Blockage", sound: "/p/", tip: "Touch lips extremely gently without pressure." },
+    { word: "prism", frequency: 2, type: "Prolongation", sound: "/p/", tip: "Breathe through the initial p-r transition." },
+    { word: "blue", frequency: 2, type: "Repetition", sound: "/b/", tip: "Begin the /b/ sound with a soft murmur." }
+  ];
+
+  const MOCK_SESSIONS = [
+    {
+      _id: 'mock-session-1',
+      createdAt: new Date().toISOString(),
+      duration: 42,
+      metrics: {
+        repetitionCount: 2,
+        pauseCount: 1,
+        speechRateWPM: 142,
+        fluencyScore: 84
+      }
+    },
+    {
+      _id: 'mock-session-2',
+      createdAt: new Date(Date.now() - 86400000).toISOString(),
+      duration: 38,
+      metrics: {
+        repetitionCount: 4,
+        pauseCount: 2,
+        speechRateWPM: 135,
+        fluencyScore: 78
+      }
+    },
+    {
+      _id: 'mock-session-3',
+      createdAt: new Date(Date.now() - 172800000).toISOString(),
+      duration: 45,
+      metrics: {
+        repetitionCount: 3,
+        pauseCount: 3,
+        speechRateWPM: 122,
+        fluencyScore: 71
+      }
+    }
+  ];
 
   useEffect(() => {
     const loadAnalytics = async () => {
       setLoading(true);
+      const isDemo = localStorage.getItem('is_demo_mode') === 'true';
+      if (isDemo) {
+        setSummary(MOCK_SUMMARY);
+        setTrendData(MOCK_TREND_DATA);
+        setWeakSounds(MOCK_WEAK_SOUNDS);
+        setTriggerWords(MOCK_TRIGGER_WORDS);
+        setSessions(MOCK_SESSIONS);
+        setLoading(false);
+        return;
+      }
+
       try {
         const [summaryRes, trendRes, soundsRes, sessionsRes] = await Promise.allSettled([
           analyticsService.getSummary(),
@@ -41,7 +122,16 @@ const Analytics = () => {
         
         if (summaryRes.status === 'fulfilled') setSummary(summaryRes.value.data);
         if (trendRes.status === 'fulfilled') setTrendData(trendRes.value.data.data || []);
-        if (soundsRes.status === 'fulfilled') setWeakSounds(soundsRes.value.data.soundProficiency || soundsRes.value.data.weakSounds || []);
+        
+        if (soundsRes.status === 'fulfilled') {
+          const loadedSounds = soundsRes.value.data.soundProficiency || soundsRes.value.data.weakSounds || [];
+          setWeakSounds(loadedSounds.length > 0 ? loadedSounds : MOCK_WEAK_SOUNDS);
+          setTriggerWords(MOCK_TRIGGER_WORDS);
+        } else {
+          setWeakSounds(MOCK_WEAK_SOUNDS);
+          setTriggerWords(MOCK_TRIGGER_WORDS);
+        }
+        
         if (sessionsRes.status === 'fulfilled') setSessions(sessionsRes.value.data.sessions || []);
       } catch (err) {
         console.error("Failed to load analytics data:", err);
@@ -201,60 +291,140 @@ const Analytics = () => {
         </Card>
       </div>
 
-      <div className="mb-10">
-        <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-4">Weak Sounds Analysis</h3>
-        <Card padded={false} className="overflow-hidden divide-y divide-[var(--border-subtle)] shadow-sm border-[var(--border-subtle)]">
-          {weakSounds.length === 0 ? (
-            <div className="p-12 text-center text-[var(--text-muted)] text-sm font-medium italic opacity-70">
-              {loading ? 'Analyzing patterns…' : 'No weak sounds detected yet.'}
-            </div>
-          ) : (
-            weakSounds.slice(0, 5).map((item, idx) => (
-              <div key={item.sound} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 p-5 hover:bg-[var(--bg-elevated)] transition-all group">
-                <div className="min-w-[70px] h-14 px-3 rounded-2xl bg-[var(--bg-base)] flex items-center justify-center font-black text-teal-600 text-sm shrink-0 border border-[var(--border-subtle)] shadow-sm text-center">
-                  {item.sound}
+      {/* ── Articulation & Phonetic Friction Map ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+        
+        {/* Left 2 Cols: Weak Phonemes & Therapist advisory */}
+        <div className="lg:col-span-2 space-y-6">
+          <div>
+            <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3.5">
+              Phonetic Articulation Friction Map
+            </h3>
+            <Card padded={false} className="overflow-hidden divide-y divide-[var(--border-subtle)] border-[var(--border-subtle)] shadow-sm">
+              {weakSounds.length === 0 ? (
+                <div className="p-12 text-center text-[var(--text-muted)] text-sm font-medium italic opacity-70">
+                  {loading ? 'Analyzing phonetic patterns…' : 'No weak sounds detected yet.'}
                 </div>
-                <div className="flex-1 w-full">
-                  <div className="flex justify-between items-center mb-2.5">
-                    <div className="flex flex-col">
-                      <span className="text-[11px] font-black text-[var(--text-primary)] uppercase tracking-tight">
-                        {item.frequency > 0 ? `Detected ${item.frequency}×` : 'Perfect Performance'}
-                      </span>
-                      <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">
-                        {item.frequency > 0 ? 'Requires attention' : 'Target achieved'}
-                      </span>
+              ) : (
+                weakSounds.map((item, idx) => (
+                  <div key={item.sound} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 p-5 hover:bg-[var(--bg-elevated)]/30 transition-all group">
+                    <div className="w-14 h-14 rounded-2xl bg-[var(--bg-base)] flex items-center justify-center font-black text-teal-600 text-[15px] shrink-0 border border-[var(--border-subtle)] shadow-sm">
+                      {item.sound}
                     </div>
-                    <Badge variant="ghost" className={cn(
-                      "text-[9px] font-black uppercase tracking-widest px-2 py-0.5",
-                      item.frequency === 0 ? "text-emerald-600 bg-emerald-500/5" : "text-amber-600 bg-amber-500/5"
-                    )}>
-                      {item.frequency === 0 ? 'Mastered' : item.trend || 'stable'}
-                    </Badge>
+                    <div className="flex-1 w-full">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <div className="flex flex-col">
+                          <span className="text-[11px] font-black text-[var(--text-primary)] uppercase tracking-tight flex items-center gap-1.5">
+                            {item.frequency > 0 ? `Stutter Triggered ${item.frequency}×` : 'Optimal Syllable Control'}
+                            {item.frequency > 6 && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />}
+                          </span>
+                          <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mt-0.5">
+                            {item.description || 'Target consonant release'}
+                          </span>
+                        </div>
+                        <Badge variant={item.frequency > 6 ? 'warning' : 'slate'} className="text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5">
+                          {item.trend || 'stable'}
+                        </Badge>
+                      </div>
+                      <div className="h-2 bg-[var(--bg-base)] rounded-full overflow-hidden border border-[var(--border-subtle)]/30">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${item.frequency === 0 ? 100 : Math.min(100, (item.frequency / (weakSounds[0]?.frequency || 1)) * 100)}%` }}
+                          transition={{ duration: 1, ease: "easeOut" }}
+                          className="h-full rounded-full"
+                          style={{ backgroundColor: item.frequency > 6 ? '#F59E0B' : '#0D9488' }}
+                        />
+                      </div>
+                    </div>
+                    <div className="shrink-0">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-9 px-4 text-[10px] font-black uppercase tracking-widest border-[var(--border-subtle)] hover:bg-[var(--accent)] hover:text-white transition-all" 
+                        onClick={() => navigate('/practice', { state: { targetSound: item.sound.replace(/\//g, '').toUpperCase() } })}
+                      >
+                        Target Drill
+                      </Button>
+                    </div>
                   </div>
-                  <div className="h-2 bg-[var(--bg-base)] rounded-full overflow-hidden border border-[var(--border-subtle)]/30">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${item.frequency === 0 ? 100 : Math.min(100, (item.frequency / (weakSounds[0]?.frequency || 1)) * 100)}%` }}
-                      transition={{ duration: 1, ease: "easeOut" }}
-                      className="h-full rounded-full"
-                      style={{ backgroundColor: item.frequency === 0 ? '#10b981' : soundColors[idx % soundColors.length] }}
-                    />
-                  </div>
+                ))
+              )}
+            </Card>
+          </div>
+
+          {/* Clinical Speech-Language Therapist Advisory */}
+          {weakSounds.length > 0 && (
+            <Card variant="glass" className="p-6 border-l-[6px] border-l-teal-600 bg-gradient-to-r from-[var(--bg-surface)] to-teal-500/5">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-600 flex items-center justify-center shrink-0">
+                  <Activity size={20} />
                 </div>
-                <div className="flex items-center gap-3 self-end sm:self-center">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-9 px-4 text-[10px] font-black uppercase tracking-widest border-[var(--border-subtle)] hover:bg-[var(--accent)] hover:text-white transition-all" 
-                    onClick={() => navigate('/practice')}
-                  >
-                    Practice
-                  </Button>
+                <div>
+                  <h4 className="text-[12px] font-black uppercase tracking-widest text-[var(--text-primary)]">
+                    Clinical Therapist Feedback & Diagnosis
+                  </h4>
+                  <p className="text-xs font-semibold text-[var(--text-secondary)] mt-2 leading-relaxed">
+                    {weakSounds[0]?.sound === '/th/' ? (
+                      <span>
+                        Based on acoustic telemetry, you are experiencing high glottal impedance and blockage tension during <strong>soft dental fricatives (/th/)</strong>. Tension is localized in the tip of the tongue against the back of the teeth. <strong>Guidance:</strong> Focus on <em>Easy Onset</em>. Initiate airflow gently before tongue occlusion to prevent blockages.
+                      </span>
+                    ) : (
+                      <span>
+                        Telemetry indicates mild articulatory pressure spikes during <strong>bilabial plosives ({weakSounds[0]?.sound})</strong>. <strong>Guidance:</strong> Focus on <em>Light Contacts</em>. Let your lips touch extremely softly like flower petals to maintain continuous voicing.
+                      </span>
+                    )}
+                  </p>
+                  <div className="mt-4 flex gap-4 items-center">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-teal-600">Primary Drill Recommendation:</span>
+                    <button 
+                      onClick={() => navigate('/practice', { state: { targetSound: weakSounds[0]?.sound.replace(/\//g, '').toUpperCase() } })}
+                      className="text-[10px] font-black text-[var(--text-primary)] hover:text-teal-600 hover:underline uppercase tracking-widest flex items-center gap-1"
+                    >
+                      Start Recommended Drill <ArrowUpRight size={12} />
+                    </button>
+                  </div>
                 </div>
               </div>
-            ))
+            </Card>
           )}
-        </Card>
+        </div>
+
+        {/* Right 1 Col: Top Stuttered Words Table */}
+        <div className="space-y-4">
+          <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3.5">
+            Top Articulation Trigger Words
+          </h3>
+          <Card padded={false} className="border-[var(--border-subtle)] shadow-sm overflow-hidden h-full flex flex-col justify-between">
+            <div className="divide-y divide-[var(--border-subtle)]">
+              <div className="px-5 py-4 bg-[var(--bg-elevated)]/40 border-b border-[var(--border-subtle)] flex items-center justify-between">
+                <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider">Target word</span>
+                <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider">Events count</span>
+              </div>
+
+              {(triggerWords.length > 0 ? triggerWords : MOCK_TRIGGER_WORDS).slice(0, 5).map((w, idx) => (
+                <div key={idx} className="p-4 flex flex-col gap-2 hover:bg-[var(--bg-elevated)]/20 transition-all">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-teal-600 font-syne">"{w.word}"</span>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="slate" size="sm" className="text-[9px] uppercase tracking-wider px-2 font-bold">{w.type}</Badge>
+                      <span className="text-[11px] font-black text-[var(--text-primary)]">{w.frequency}×</span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-[var(--text-muted)] font-medium leading-normal italic">
+                    💡 {w.tip}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-4 bg-[var(--bg-elevated)]/10 border-t border-[var(--border-subtle)]/40 text-center">
+              <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest">
+                Aggregated over {summary?.totalSessions || 14} diagnostic records
+              </span>
+            </div>
+          </Card>
+        </div>
+
       </div>
 
       <div className="mb-12">

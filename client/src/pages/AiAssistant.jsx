@@ -30,6 +30,7 @@ import Breadcrumb from '../components/layout/Breadcrumb';
 import Card from '../components/shared/Card';
 import Button from '../components/shared/Button';
 import { motion } from 'framer-motion';
+import api from '../services/api';
 
 // ── Static chat history ──────────────────────────────────────────────────────
 const HISTORY_ITEMS = [
@@ -81,8 +82,69 @@ const AI_RESPONSES = [
   'Your block events dropped from 7 to 3 this week. The targeted /p/ exercises are working. Shall I generate a new difficulty level for tomorrow?',
 ];
 
+// ── Historical Conversation Threads ──────────────────────────────────────────
+const HISTORY_THREADS = {
+  1: [
+    {
+      id: 101,
+      role: 'ai',
+      content: 'Welcome to the FluentAI Intelligence Hub. I have analyzed your 14 recent sessions. Your resonance stability is showing a 12% upward trend in the last 48 hours. Shall we start a targeted practice set for your weak phonemes?',
+      time: '09:00 AM',
+    },
+    {
+      id: 102,
+      role: 'user',
+      content: 'Summarize my last session',
+      time: '09:14 AM',
+    },
+    {
+      id: 103,
+      role: 'ai',
+      content: 'Analysis complete. Your block duration has decreased by 12% since Tuesday — that\'s meaningful progress. Speech rate held steady at 108 WPM. Shall we start a targeted practice set for /th/ sounds?',
+      time: '09:14 AM',
+      isInsight: true,
+    }
+  ],
+  2: [
+    {
+      id: 201,
+      role: 'ai',
+      content: 'Hi Hassan, here are your personalized practice tips for Tuesday. Focus on relaxing your neck and shoulder muscles before voicing sounds. This prevents articulatory blocks.',
+      time: '04:15 PM',
+    },
+    {
+      id: 202,
+      role: 'user',
+      content: 'What about plosive pop sounds like /p/?',
+      time: '04:16 PM',
+    },
+    {
+      id: 203,
+      role: 'ai',
+      content: 'For /p/, use the "Light Contact" technique. Let your lips meet like two feathers. Do not build up pressure behind them.',
+      time: '04:17 PM',
+    }
+  ],
+  3: [
+    {
+      id: 301,
+      role: 'ai',
+      content: 'Phoneme analysis complete. I detected 8 blocks on the dental fricative /th/ sound. Let\'s practice slow, controlled slide-ins on "think" and "thimble".',
+      time: '11:30 AM',
+    }
+  ],
+  4: [
+    {
+      id: 401,
+      role: 'ai',
+      content: 'Welcome to your Goal Setting session. Our target is to reduce block events to under 3 per session by the end of the week. How do you feel about this goal?',
+      time: '02:00 PM',
+    }
+  ]
+};
+
 const AiAssistant = () => {
-  const [messages, setMessages] = useState(INITIAL_MESSAGES);
+  const [messages, setMessages] = useState(HISTORY_THREADS[1]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [activeHistoryId, setActiveHistoryId] = useState(1);
@@ -92,6 +154,26 @@ const AiAssistant = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  useEffect(() => {
+    if (activeHistoryId && HISTORY_THREADS[activeHistoryId]) {
+      setMessages(HISTORY_THREADS[activeHistoryId]);
+    }
+  }, [activeHistoryId]);
+
+  const handleNewSession = () => {
+    setActiveHistoryId(null);
+    setMessages([
+      {
+        id: Date.now(),
+        role: 'ai',
+        content: 'Welcome to a new FluentAI clinical thread. I have cleared your active context. How can I assist you with your speech fluency practice today?',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isInsight: false,
+      }
+    ]);
+    setInput('');
+  };
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -112,20 +194,30 @@ const AiAssistant = () => {
     setInput('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      const responseText = AI_RESPONSES[aiResponseIndex.current % AI_RESPONSES.length];
-      aiResponseIndex.current += 1;
-
-      const aiMsg = {
-        id: Date.now() + 1,
-        role: 'ai',
-        content: responseText,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isInsight: aiResponseIndex.current % 3 === 0,
-      };
-      setMessages(prev => [...prev, aiMsg]);
-      setIsTyping(false);
-    }, 1500);
+    api.post('/assistant/chat', { message: trimmed })
+      .then(res => {
+        const aiMsg = {
+          id: Date.now() + 1,
+          role: 'ai',
+          content: res.data.reply,
+          time: res.data.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isInsight: res.data.isInsight || false,
+        };
+        setMessages(prev => [...prev, aiMsg]);
+      })
+      .catch(err => {
+        console.error("AI Assistant live query error:", err);
+        const fallbackMsg = {
+          id: Date.now() + 1,
+          role: 'ai',
+          content: "I'm having trouble syncing with your live telemetry database right now. Remember to practice your **Light Articulatory Contacts** and let your lips touch gently to release initial consonant blocks!",
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        setMessages(prev => [...prev, fallbackMsg]);
+      })
+      .finally(() => {
+        setIsTyping(false);
+      });
   };
 
   const handleSubmit = (e) => {
@@ -188,7 +280,10 @@ const AiAssistant = () => {
           </div>
 
           <div className="p-3 border-t border-[var(--border-subtle)]">
-            <button className="w-full py-2.5 px-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl flex items-center justify-center gap-2 hover:bg-[var(--bg-elevated)] transition-all">
+            <button 
+              onClick={handleNewSession}
+              className="w-full py-2.5 px-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl flex items-center justify-center gap-2 hover:bg-[var(--bg-elevated)] transition-all active:scale-95"
+            >
               <Plus size={14} className="text-[var(--text-primary)]" />
               <span className="text-[10px] font-black text-[var(--text-primary)] uppercase tracking-widest">New Session</span>
             </button>

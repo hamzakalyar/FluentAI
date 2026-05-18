@@ -33,4 +33,6 @@ export const sessionsService = {
   deleteSession: (id) => api.delete(`/sessions/${id}`),
 
   getPassages: () => api.get('/assessment-passages'),
+  getPassageById: (id) => api.get(`/assessment-passages/${id}`),
 };
+

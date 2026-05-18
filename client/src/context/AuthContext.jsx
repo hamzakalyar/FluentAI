@@ -13,7 +13,23 @@ export const AuthProvider = ({ children }) => {
   // On mount — if a token exists in localStorage, rehydrate user from backend
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
+    const isDemo = localStorage.getItem('is_demo_mode') === 'true';
+
     if (!savedToken) {
+      setLoading(false);
+      return;
+    }
+
+    if (isDemo) {
+      setUser({
+        id: 'demo-user-123',
+        name: 'Demo Account',
+        email: 'demo@fluentai.com',
+        role: 'patient',
+        isDemo: true
+      });
+      setToken(savedToken);
+      setIsAuthenticated(true);
       setLoading(false);
       return;
     }
@@ -27,6 +43,7 @@ export const AuthProvider = ({ children }) => {
       .catch(() => {
         // Token is invalid or expired — clear everything
         localStorage.removeItem('token');
+        localStorage.removeItem('is_demo_mode');
         setUser(null);
         setToken(null);
         setIsAuthenticated(false);
@@ -71,6 +88,22 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setIsAuthenticated(false);
     localStorage.removeItem('token');
+    localStorage.removeItem('is_demo_mode');
+  };
+
+  const loginDemo = () => {
+    const demoUser = {
+      id: 'demo-user-123',
+      name: 'Demo Account',
+      email: 'demo@fluentai.com',
+      role: 'patient',
+      isDemo: true
+    };
+    setUser(demoUser);
+    setToken('demo-token-12345');
+    setIsAuthenticated(true);
+    localStorage.setItem('token', 'demo-token-12345');
+    localStorage.setItem('is_demo_mode', 'true');
   };
 
   const setRole = (newRole) => {
@@ -90,6 +123,7 @@ export const AuthProvider = ({ children }) => {
       login,
       register,
       logout,
+      loginDemo,
       setRole
     }}>
       {children}

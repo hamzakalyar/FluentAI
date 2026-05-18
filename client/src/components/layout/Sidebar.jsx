@@ -13,13 +13,17 @@ import {
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
  
-const Sidebar = ({ isOpen, toggleSidebar }) => {
+const Sidebar = ({ isOpen, toggleSidebar, onLogoutClick }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   
   const handleLogout = () => {
-    logout();
-    navigate('/login');
+    if (onLogoutClick) {
+      onLogoutClick();
+    } else {
+      logout();
+      navigate('/login');
+    }
   };
 
   const menuItems = [

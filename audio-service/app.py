@@ -22,17 +22,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import sys
-
-# SILENCE VERBOSE LOGS BEFORE ANY OTHER IMPORTS
-os.environ["NUMBA_LOG_LEVEL"] = "ERROR"
-os.environ["KMP_WARNINGS"] = "0"
-
 import traceback
-import logging
-
-# SILENCE VERBOSE LOGS (Fix for "too much long" logs)
-logging.getLogger('numba').setLevel(logging.WARNING)
-logging.getLogger('werkzeug').setLevel(logging.ERROR) # Only show errors for the web server
 
 # CRITICAL FIX FOR WINDOWS: 
 # Ensure ffmpeg.exe located in this folder can be found by Whisper/subprocess
@@ -56,25 +46,13 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # Pre-load the Whisper model at startup (takes ~10 seconds first time)
 print("\n🔄 Initializing Audio Analysis Service...")
 try:
-    load_model("small")  # Upgraded from 'base' — better accuracy on dysfluent/accented speech
+    load_model("base")
 except Exception as e:
     print(f"⚠️ Whisper model loading deferred: {e}")
 
 
-@app.route('/', methods=['GET'])
-def index():
-    """Default root route — returns microservice info for Hugging Face health checks."""
-    return jsonify({
-        'status': 'online',
-        'service': 'Speech Fluency AI Analysis Microservice',
-        'engine': 'Whisper + Stutter Density Model',
-        'healthCheck': '/health'
-    })
-
-
 @app.route('/health', methods=['GET'])
 def health():
-
     """Health check — verify all services are loaded."""
     return jsonify({
         'status': 'ok',
@@ -164,58 +142,7 @@ def analyze():
         # STEP 4: PHONEME MAPPING (Weak Sounds)
         # ============================================
         print("🔤 Step 4: Mapping to phonemes...")
-
-        # Signal 1: Word-level repetitions (classic stutter)
-        rep_words = [r["word"] for r in metrics.get("repetitions", [])]
-
-        # Signal 2: Paused words (blocks — silence before a word means struggle at onset)
-        paused_positions = [p["position"] for p in metrics.get("pauses", [])]
-        paused_words = []
-        for w in transcript_data.get("words", []):
-            for pause_pos in paused_positions:
-                if abs(w["start"] - pause_pos) < 1.5:
-                    paused_words.append(w["word"])
-                    break
-
-        # Signal 3: Audio-burst words (rapid short sound clusters = sound-level blocks like 'p-p-peter')
-        # detect_audio_level_repetitions is already computed inside analyze_audio — re-use its output
-        # from the detectedStutters timeline which includes sound_repetition events
-        burst_words = []
-        # Pre-build expected word list from passage for accurate phoneme mapping
-        expected_words_list = []
-        if passage_id and passage_id != 'dynamic':
-            _passage = get_passage_by_id(passage_id)
-            if _passage:
-                import re as _re
-                expected_words_list = _re.findall(r"[a-zA-Z']+", _passage.get('text', ''))
-
-        for stutter_event in metrics.get("detectedStutters", []):
-            if stutter_event.get("type") == "sound_repetition":
-                burst_pos = stutter_event.get("position", -1)
-                # Find the Whisper word closest to (and after) the burst
-                closest_whisper = None
-                closest_idx = None
-                min_dist = float("inf")
-                for idx_w, w in enumerate(transcript_data.get("words", [])):
-                    dist = w["start"] - burst_pos
-                    if 0 <= dist < 2.0 and dist < min_dist:
-                        min_dist = dist
-                        closest_whisper = w["word"]
-                        closest_idx = idx_w
-
-                if closest_whisper:
-                    # FIX 5: Prefer the expected passage word at same position
-                    # Whisper hallucinates (e.g. says "speak" when user said "p-p-peter")
-                    # The expected word is the ground truth for phoneme mapping
-                    if expected_words_list and closest_idx is not None and closest_idx < len(expected_words_list):
-                        burst_words.append(expected_words_list[closest_idx])
-                    else:
-                        burst_words.append(closest_whisper)
-
-        # Combine all signals for weak sound identification
-        all_weak_candidates = rep_words + paused_words + burst_words
-        weak_sounds_data = identify_weak_sounds(all_weak_candidates)
-        print(f"   Signals — reps:{len(rep_words)} pauses:{len(paused_words)} bursts:{len(burst_words)}")
+        weak_sounds_data = identify_weak_sounds(stuttered_words)
         print(f"   Top 3 weak sounds: {weak_sounds_data['top3']}")
 
         # ============================================
@@ -443,6 +370,4 @@ if __name__ == '__main__':
     print('   GET  /assessment-passages  → List assessment passages')
     print('   GET  /assessment-passages/:id → Get passage details')
     print('=' * 40)
-    port = int(os.environ.get("PORT", 5000))
-    print(f"🚀 Starting Flask on host 0.0.0.0 and port {port}...")
-    app.run(host="0.0.0.0", port=port)
+    app.run(debug=True, port=5000)
