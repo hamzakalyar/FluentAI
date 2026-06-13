@@ -26,14 +26,29 @@ connectDB();
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
+// Build allowed origins list — CLIENT_URL can be a comma-separated list of domains
+// e.g.  CLIENT_URL=https://example.vercel.app,https://mycustomdomain.com
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  ...(process.env.CLIENT_URL
+    ? process.env.CLIENT_URL.split(',').map(u => u.trim()).filter(Boolean)
+    : [])
+];
+
 app.use(cors({
-  origin: [
-    'http://localhost:5173',   // React/Vite frontend
-    'http://localhost:3000',   // Test frontend (npx serve)
-    process.env.CLIENT_URL
-  ].filter(Boolean),
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    console.warn(`⚠️  CORS blocked request from: ${origin}`);
+    return callback(new Error(`CORS: origin '${origin}' is not allowed`));
+  },
   credentials: true
 }));
+
 app.use(morgan('dev'));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
