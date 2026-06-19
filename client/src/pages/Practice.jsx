@@ -824,13 +824,13 @@ const Practice = () => {
                 </motion.div>
               ) : (
                 exercises.map((ex, index) => (
-                  <motion.div key={`exercise-${index}-${ex?.sentence?.slice(0,10)}`} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
+                  <motion.div key={ex.id || `exercise-${index}`} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
                     <ExerciseCard
-                      exercise={{ id: ex.sentence || `idx-${index}`, num: index+1, title: `${ex.targetSound} Focus`, tag: ex.soundLabel || ex.targetSound, difficulty: ex.difficulty || 'Medium', text: ex.sentence || 'No text available' }}
+                      exercise={ex}
                       onComplete={handleComplete}
-                      isInitiallyCompleted={completedIds.includes(ex.sentence)}
-                      isActive={activeCardId === (ex.sentence || `idx-${index}`)}
-                      onActivate={() => setActiveCardId(ex.sentence || `idx-${index}`)}
+                      isInitiallyCompleted={completedIds.includes(ex.id) || completedIds.includes(ex.text)}
+                      isActive={activeCardId === ex.id}
+                      onActivate={() => setActiveCardId(ex.id)}
                     />
                   </motion.div>
                 ))
