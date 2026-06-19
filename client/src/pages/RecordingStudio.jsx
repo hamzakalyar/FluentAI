@@ -55,6 +55,9 @@ const RecordingStudio = () => {
       if (audioBlob && audioRef.current) {
          const url = URL.createObjectURL(audioBlob);
          audioRef.current.src = url;
+         // CRITICAL: must call .load() after setting src dynamically —
+         // browsers do NOT auto-load new blob URLs assigned via JavaScript
+         audioRef.current.load();
          return () => URL.revokeObjectURL(url);
       }
    }, [audioBlob]);
@@ -167,14 +170,39 @@ const RecordingStudio = () => {
                analyticsService.getSummary(),
                sessionsService.getSessions({ limit: 1 })
             ]);
-            
-            setPassages(passagesRes.data?.passages || passagesRes.data || []);
+
+            // Express proxy at /api/assessment-passages returns { passages: [...] }
+            // Python /assessment-passages returns { passages: [...] } too
+            // Raw array is also possible — handle all shapes defensively
+            const rawPassages =
+               passagesRes.data?.passages ||
+               (Array.isArray(passagesRes.data) ? passagesRes.data : null);
+
+            if (rawPassages && rawPassages.length > 0) {
+               // Normalise: ensure each passage has id + title fields
+               const normalised = rawPassages.map(p => ({
+                  ...p,
+                  id:    p.id    || p._id  || '',
+                  title: p.title || p.name || p.id || 'Passage',
+                  text:  p.text  || '',
+                  targetSounds: p.targetSounds || [],
+               }));
+               setPassages(normalised);
+            } else {
+               // Python service may be down — fall back to built-in mock passages
+               // so the daily-routine panel is never blank
+               console.warn('Passages API returned empty — using built-in fallback passages');
+               setPassages(MOCK_DEMO_PASSAGES);
+            }
+
             setWeeklyStats(statsRes.data);
             if (lastSessionRes.data.sessions?.length > 0) {
                setLastSession(lastSessionRes.data.sessions[0]);
             }
          } catch (e) {
             console.error("Failed to fetch sidebar data", e);
+            // Always fall back so the passage panel is never blank
+            setPassages(MOCK_DEMO_PASSAGES);
          }
       };
       loadSidebarData();

@@ -254,9 +254,17 @@ const ExerciseCard = ({ exercise, onComplete, isInitiallyCompleted, isActive, on
               if (isPlaying) { audioRef.current.pause(); setIsPlaying(false); }
               else {
                 const url = URL.createObjectURL(audioBlob);
-                if (!audioRef.current) audioRef.current = new Audio(url);
-                audioRef.current.play(); setIsPlaying(true);
-                audioRef.current.onended = () => setIsPlaying(false);
+                // Pause any previous instance first
+                if (audioRef.current) {
+                  audioRef.current.pause();
+                  audioRef.current = null;
+                }
+                const a = new Audio(url);
+                a.load(); // must call load() before play() on dynamically created Audio
+                audioRef.current = a;
+                a.play().catch(e => console.warn('ExerciseCard playback failed:', e));
+                setIsPlaying(true);
+                a.onended = () => setIsPlaying(false);
               }
             } else startRecording();
           }}
@@ -576,7 +584,20 @@ const Practice = () => {
         practiceService.getResults({ limit: 50 }).catch(() => ({ data: { results: [] } }))
       ]);
 
-      const exerciseList = exercisesRes?.data?.exercises || [];
+      const rawExercises = exercisesRes?.data?.exercises || [];
+
+      // NORMALISE: Python returns { sentence, targetSound, soundLabel, difficulty }
+      // but ExerciseCard reads { text, tag, title, num, id, difficulty }
+      const exerciseList = rawExercises.map((ex, idx) => ({
+        id:         ex.id         || `ex-${idx}`,
+        num:        idx + 1,
+        title:      ex.title      || ex.soundLabel || `${ex.targetSound || ex.tag || 'Sound'} Exercise`,
+        text:       ex.text       || ex.sentence   || '',
+        tag:        ex.tag        || ex.targetSound || '',
+        difficulty: ex.difficulty
+          ? ex.difficulty.charAt(0).toUpperCase() + ex.difficulty.slice(1)
+          : 'Easy',
+      }));
       setExercises(exerciseList);
 
       // Step 3: Set completed IDs based on today's results
