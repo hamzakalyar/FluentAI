@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { sessionsService } from '../services/sessionsService';
 
 /**
@@ -40,7 +40,16 @@ export const useRecording = () => {
         source.connect(analyserNode);
         setAnalyser(analyserNode);
 
-        const recorder = new MediaRecorder(stream);
+        // Detect best supported MIME type at runtime
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+          ? 'audio/ogg;codecs=opus'
+          : '';
+        const recorderOptions = mimeType ? { mimeType } : {};
+        const recorder = new MediaRecorder(stream, recorderOptions);
         mediaRecorderRef.current = recorder;
         chunksRef.current = [];
 
@@ -49,13 +58,16 @@ export const useRecording = () => {
         };
 
         recorder.onstop = () => {
-          const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+          // Use detected mimeType so blob is consistent with what was recorded
+          const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' });
           setAudioBlob(blob);
           audioBlobRef.current = blob;
           setStatus('reviewing');
         };
 
-        recorder.start();
+        // Start with 1-second timeslice: fires ondataavailable every 1s
+        // This prevents data loss if the tab is hidden or recording is very long
+        recorder.start(1000);
         setStatus('recording');
       } catch (micError) {
         console.warn('Microphone access denied. Falling back to simulation.', micError);
@@ -73,6 +85,17 @@ export const useRecording = () => {
     }
   }, []);
 
+  // Cleanup on unmount: close AudioContext and stop mic tracks to prevent resource leaks
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach(track => track.stop());
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close();
+      }
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
   const stopRecording = useCallback(() => {
     if (status === 'recording' || status === 'paused') {
       if (mediaRecorderRef.current) {
@@ -81,6 +104,12 @@ export const useRecording = () => {
       } else {
         setStatus('reviewing');
       }
+      // Close the AudioContext to free browser resources (browsers cap at ~6 concurrent)
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+      setAnalyser(null);
       clearInterval(timerRef.current);
     }
   }, [status]);
@@ -162,6 +191,15 @@ export const useRecording = () => {
     chunksRef.current = [];
     audioBlobRef.current = null;
     if (timerRef.current) clearInterval(timerRef.current);
+    // Close AudioContext if it wasn't already closed by stopRecording
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    // Stop any lingering microphone tracks
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    streamRef.current = null;
+    mediaRecorderRef.current = null;
   }, []);
 
   return {

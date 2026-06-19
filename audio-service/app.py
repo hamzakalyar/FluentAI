@@ -22,7 +22,17 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import sys
+import io
 import traceback
+
+# Force UTF-8 output encoding for Windows command line compatibility
+if sys.platform.startswith('win'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except AttributeError:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 # CRITICAL FIX FOR WINDOWS: 
 # Ensure ffmpeg.exe located in this folder can be found by Whisper/subprocess

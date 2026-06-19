@@ -56,14 +56,14 @@ echo  ⚡ Launching Express Backend Server (Port 3001)...
 start "FluentAI Backend [Express]" cmd /k "color 0E && cd server && echo Starting Express Backend... && npm run dev"
 
 :: Give backend time to spin up
-timeout /t 2 > nul
+ping 127.0.0.1 -n 3 > nul
 
 :: Terminal B: Python Audio service (Flask)
 echo  🧠 Launching AI Audio Service [Whisper + Wav2Vec] (Port 5000)...
 start "FluentAI Audio Server [Flask]" cmd /k "color 09 && cd audio-service && echo Activating virtual environment... && venv\Scripts\activate.bat && echo Starting Flask inference server... && python app.py"
 
 :: Give Python service time to spin up
-timeout /t 3 > nul
+ping 127.0.0.1 -n 4 > nul
 
 :: Terminal C: Frontend UI (React + Vite)
 echo  💻 Launching React Client GUI (Port 5173)...
@@ -78,6 +78,5 @@ echo   ✔ Audio Inference:  http://localhost:5000
 echo ─────────────────────────────────────────────────────────────
 echo.
 echo  🎉 All services running! Client GUI should open in browser shortly.
-echo  Press any key to exit this monitor window (services will stay alive).
 echo.
-pause
+exit /b 0

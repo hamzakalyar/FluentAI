@@ -2,12 +2,13 @@
 STUTTER DETECTOR — Core Detection Algorithms
 ==============================================
 This module takes the Whisper transcript + raw audio and detects
-4 types of stuttering patterns:
+5 types of stuttering patterns:
 
-1. REPETITIONS  — "I-I-I want" (same word repeated consecutively)
-2. PAUSES       — Abnormally long silences mid-sentence (>500ms)
-3. FILLERS      — "um", "uh", "like", "you know"
-4. SPEECH RATE  — Words per minute (normal: 120-150 WPM)
+1. REPETITIONS   — "I-I-I want" (same word repeated consecutively)
+2. PAUSES        — Abnormally long silences mid-sentence (>300ms)
+3. FILLERS       — "um", "uh", "like", "you know"
+4. SPEECH RATE   — Words per minute (normal: 120-150 WPM)
+5. PROLONGATIONS — Extended phonemes like "prrrrrfemue" or "bissssssssstick"
 
 Then combines everything into a FLUENCY SCORE (0-100).
 
@@ -22,7 +23,7 @@ REPETITION DETECTOR:
 PAUSE DETECTOR (uses Librosa):
   Input:  Raw audio WAV file
   Logic:  librosa.effects.split() finds all non-silent intervals.
-          Gap between intervals > 500ms = abnormal pause.
+          Gap between intervals > 300ms = abnormal pause.
   Output: [{position: 3.5, duration_ms: 850}, {position: 7.2, duration_ms: 620}]
 
 FILLER DETECTOR:
@@ -35,8 +36,16 @@ SPEECH RATE:
   Logic:  (total_words / duration_minutes)
   Output: 95 WPM
 
+PROLONGATION DETECTOR (uses Librosa):
+  Input:  Raw audio WAV file
+  Logic:  librosa.effects.split() finds speech segments.
+          A segment that is 2.5x+ longer than the average segment duration
+          AND longer than 450ms is flagged as a prolonged phoneme.
+          This catches "prrrrrfemue" (stretched /r/) and "bissssssssstick" (/s/).
+  Output: [{position: 1.2, duration_ms: 700, severity: "high"}]
+
 FLUENCY SCORE:
-  Formula: 100 - (repetitions × 5) - (pauses × 4) - (fillers × 2) - (WPM_penalty)
+  Formula: 100 - (repetitions×8) - (prolongations×6) - (pauses×5) - (fillers×3) - (WPM_penalty)
   Output: 66.5 / 100
 """
 
@@ -189,11 +198,13 @@ def detect_audio_level_repetitions(audio_path):
     try:
         audio, sr = librosa.load(audio_path, sr=16000)
         
-        # Split into speech segments with sensitive threshold
-        intervals = librosa.effects.split(audio, top_db=25)
+        # Split into speech segments — use sensitive threshold (top_db=20)
+        # top_db=20 means anything 20dB below peak is "silence" (catches quiet bursts)
+        intervals = librosa.effects.split(audio, top_db=20)
         
         if len(intervals) < 2:
-            return {"count": 0, "repetitions": []}
+            return {"count": 0, "repetitions": [], "fragmentation_ratio": 0,
+                    "total_segments": len(intervals), "short_segments": 0}
         
         repetitions = []
         
@@ -211,31 +222,31 @@ def detect_audio_level_repetitions(audio_path):
         
         # PATTERN 1: Detect clusters of very short speech bursts
         # Stuttering creates rapid short bursts: "b-b-b-ball" = 4 short segments
+        # Threshold: < 500ms each, gap < 400ms between bursts
         i = 0
         while i < len(segments):
-            # Look for consecutive short segments (< 400ms each)
             cluster = []
             j = i
             while j < len(segments):
                 seg = segments[j]
-                if seg["duration_ms"] < 400:  # Short burst
+                if seg["duration_ms"] < 500:  # Short burst (raised from 400ms)
                     cluster.append(seg)
                     j += 1
-                    # Check gap to next segment is small (< 300ms)
+                    # Check gap to next segment is small (< 400ms)
                     if j < len(segments):
                         gap = (segments[j]["start"] - seg["end"]) / sr * 1000
-                        if gap > 300:
+                        if gap > 400:
                             break
                 else:
                     break
             
-            # 3+ short bursts in a row = likely stuttering
-            if len(cluster) >= 3:
+            # 2+ short bursts in a row = likely stuttering (lowered from 3)
+            if len(cluster) >= 2:
                 repetitions.append({
                     "type": "sound_repetition",
                     "position": round(cluster[0]["position"], 2),
                     "burst_count": len(cluster),
-                    "details": f"Detected {len(cluster)} rapid speech bursts (likely syllable repetition)"
+                    "details": f"Detected {len(cluster)} rapid speech bursts (likely syllable/word repetition)"
                 })
                 i = j
             else:
@@ -247,7 +258,7 @@ def detect_audio_level_repetitions(audio_path):
         total_segments = len(segments)
         fragmentation_ratio = len(short_segments) / total_segments if total_segments > 0 else 0
         
-        if fragmentation_ratio > 0.4 and total_segments > 5:
+        if fragmentation_ratio > 0.35 and total_segments > 4:
             repetitions.append({
                 "type": "fragmented_speech",
                 "position": 0,
@@ -265,7 +276,87 @@ def detect_audio_level_repetitions(audio_path):
     
     except Exception as e:
         print(f"❌ Audio-level repetition detection error: {e}")
-        return {"count": 0, "repetitions": [], "fragmentation_ratio": 0}
+        return {"count": 0, "repetitions": [], "fragmentation_ratio": 0,
+                "total_segments": 0, "short_segments": 0}
+
+
+def detect_prolongations(audio_path):
+    """
+    Detect PROLONGED phonemes — the "prrrrrfemue" and "bissssssssstick" pattern.
+
+    HOW IT WORKS:
+    ─────────────
+    In normal speech, each phoneme or syllable lasts roughly 50–250ms.
+    When a speaker stutters by PROLONGING a sound (stretching /r/, /s/, /b/)
+    the acoustic signal shows a single continuous non-silent segment that is
+    unusually LONG compared to normal syllable duration.
+
+    Algorithm:
+      1. Split audio into speech segments using librosa.
+      2. Compute the median segment duration (baseline for this speaker).
+      3. Any segment longer than max(450ms, 2.5 × median) is a prolongation.
+      4. Severity is rated: moderate (450–700ms), high (>700ms).
+
+    Returns:
+        dict: {
+            'count': 2,
+            'prolongations': [
+                {'position': 1.2, 'duration_ms': 680, 'severity': 'moderate'},
+                {'position': 3.8, 'duration_ms': 920, 'severity': 'high'}
+            ]
+        }
+    """
+    try:
+        audio, sr = librosa.load(audio_path, sr=16000)
+        
+        # Use sensitive split — top_db=20 catches quieter speech
+        intervals = librosa.effects.split(audio, top_db=20)
+        
+        if len(intervals) == 0:
+            return {"count": 0, "prolongations": []}
+        
+        # Compute segment info
+        segments = []
+        for start, end in intervals:
+            duration_ms = (end - start) / sr * 1000
+            position = start / sr
+            segments.append({
+                "start": start,
+                "end": end,
+                "position": position,
+                "duration_ms": duration_ms
+            })
+        
+        # Baseline: median duration of all segments
+        durations = [s["duration_ms"] for s in segments]
+        median_dur = float(np.median(durations)) if durations else 200.0
+        
+        # Threshold: 2.5x median OR absolute floor of 450ms
+        threshold_ms = max(450.0, 2.5 * median_dur)
+        
+        prolongations = []
+        for seg in segments:
+            if seg["duration_ms"] >= threshold_ms:
+                if seg["duration_ms"] >= 700:
+                    severity = "high"
+                else:
+                    severity = "moderate"
+                prolongations.append({
+                    "position": round(seg["position"], 2),
+                    "duration_ms": round(seg["duration_ms"]),
+                    "severity": severity,
+                    "details": f"Prolonged phoneme: {round(seg['duration_ms'])}ms segment (threshold: {round(threshold_ms)}ms)"
+                })
+        
+        return {
+            "count": len(prolongations),
+            "prolongations": prolongations,
+            "median_segment_ms": round(median_dur)
+        }
+    
+    except Exception as e:
+        print(f"❌ Prolongation detection error: {e}")
+        return {"count": 0, "prolongations": [], "median_segment_ms": 0}
 
 
 def detect_fillers(words):
@@ -396,9 +487,18 @@ def merge_transcript_and_stutters(whisper_words, stutters):
     return merged_events
 
 
-def calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rate_data, audio_repetition_data=None, advanced_stutters=None):
+def calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rate_data, audio_repetition_data=None, advanced_stutters=None, prolongation_data=None):
     """
     Calculate a composite fluency score from 0 to 100.
+    
+    Penalty table:
+      Word repetitions  : -8 per event
+      Audio repetitions : -6 per event
+      Prolongations     : -6 (moderate) / -8 (high) per event
+      Pauses            : -5 per pause
+      Fillers           : -3 per filler
+      Fragmentation     : -5 or -10 depending on ratio
+      WPM penalty       : scaled
     """
     score = 100.0
     
@@ -422,6 +522,14 @@ def calculate_fluency_score(repetition_data, pause_data, filler_data, speech_rat
                 score -= 10
             elif frag_ratio > 0.25:
                 score -= 5
+    
+    # Penalty for prolonged phonemes ("prrrr", "bisssss")
+    if prolongation_data:
+        for p in prolongation_data.get("prolongations", []):
+            if p["severity"] == "high":
+                score -= 8
+            else:
+                score -= 6
     
     # Penalty for abnormal pauses (-5 per pause)
     score -= pause_data["count"] * 5
@@ -466,9 +574,11 @@ def analyze_audio(audio_path, transcript_data):
     # Run audio-based detectors (from raw audio signal)
     pause_data = detect_pauses(audio_path)
     audio_rep_data = detect_audio_level_repetitions(audio_path)
+    prolongation_data = detect_prolongations(audio_path)  # NEW: catch prrrr / bisssss
     
     print(f"   📊 Text repetitions: {repetition_data['count']}")
     print(f"   📊 Audio repetitions: {audio_rep_data['count']}")
+    print(f"   📊 Prolongations: {prolongation_data['count']} (median seg: {prolongation_data.get('median_segment_ms', 0)}ms)")
     if advanced_stutters:
         print(f"   📊 Advanced Stutter-Solver events: {len(advanced_stutters)}")
     print(f"   📊 Fragmentation: {audio_rep_data.get('fragmentation_ratio', 0):.0%}")
@@ -481,7 +591,8 @@ def analyze_audio(audio_path, transcript_data):
     
     # Calculate composite fluency score with ALL data
     fluency_score = calculate_fluency_score(
-        repetition_data, pause_data, filler_data, speech_rate_data, audio_rep_data, advanced_stutters
+        repetition_data, pause_data, filler_data, speech_rate_data,
+        audio_rep_data, advanced_stutters, prolongation_data
     )
     
     # Build the complete metrics object
@@ -492,6 +603,7 @@ def analyze_audio(audio_path, transcript_data):
         "repetitionCount": total_repetition_count,
         "pauseCount": pause_data["count"],
         "fillerCount": filler_data["count"],
+        "prolongationCount": prolongation_data["count"],
         "repetitions": [
             {
                 "word": r["word"],
@@ -501,22 +613,25 @@ def analyze_audio(audio_path, transcript_data):
             for r in repetition_data["repetitions"]
         ],
         "audioRepetitions": audio_rep_data.get("repetitions", []),
+        "prolongations": prolongation_data.get("prolongations", []),
         "fragmentationRatio": audio_rep_data.get("fragmentation_ratio", 0),
         "pauses": pause_data["pauses"],
         "fillers": filler_data["fillers"],
         "totalWords": speech_rate_data["total_words"],
         "durationSeconds": duration,
         "detectedStutters": _build_stutter_timeline(
-            repetition_data, pause_data, filler_data, audio_rep_data, advanced_stutters, words
+            repetition_data, pause_data, filler_data, audio_rep_data,
+            advanced_stutters, words, prolongation_data
         )
     }
     
     return metrics
 
 
-def _build_stutter_timeline(repetition_data, pause_data, filler_data, audio_rep_data=None, advanced_stutters=None, whisper_words=None):
+def _build_stutter_timeline(repetition_data, pause_data, filler_data, audio_rep_data=None, advanced_stutters=None, whisper_words=None, prolongation_data=None):
     """
     Build a unified timeline of all detected stuttering events.
+    Includes: repetitions, audio-level bursts, prolongations, pauses, fillers.
     """
     timeline = []
     
@@ -539,6 +654,24 @@ def _build_stutter_timeline(repetition_data, pause_data, filler_data, audio_rep_
                     "position": ar["position"],
                     "details": ar["details"]
                 })
+    
+    # Add prolongation events — these catch "prrrrrfemue" and "bissssssssstick"
+    if prolongation_data:
+        for p in prolongation_data.get("prolongations", []):
+            # Try to associate with a nearby Whisper word if available
+            word_label = None
+            if whisper_words:
+                nearby = [w for w in whisper_words
+                          if abs(w["start"] - p["position"]) < 0.5]
+                if nearby:
+                    word_label = nearby[0]["word"]
+            timeline.append({
+                "type": "prolongation",
+                "word": word_label or "[prolonged sound]",
+                "position": p["position"],
+                "details": p["details"],
+                "severity": p["severity"]
+            })
     
     for p in pause_data["pauses"]:
         timeline.append({

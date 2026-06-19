@@ -22,6 +22,18 @@ This module provides 4 analyses:
    Tracks confidence over time.
 """
 
+import sys
+import io
+
+# Force UTF-8 output encoding for Windows command line compatibility
+if sys.platform.startswith('win'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except AttributeError:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 import spacy
 
 # Load spaCy model (small English model, ~12MB)

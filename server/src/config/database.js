@@ -8,7 +8,15 @@ const connectDB = async () => {
     console.log("🔍 Diagnostic - Selected Database Key:", process.env.MONGODB_URI ? "MONGODB_URI" : "MONGODB_URL");
     console.log("🔍 Diagnostic - Selected connection type:", typeof dbUri);
 
-    const conn = await mongoose.connect(dbUri);
+    const conn = await mongoose.connect(dbUri, {
+      serverSelectionTimeoutMS: 10000, // fail fast if Atlas unreachable
+      socketTimeoutMS: 45000,
+      maxPoolSize: 10,                  // reuse up to 10 connections
+      minPoolSize: 2,                   // keep 2 warm even when idle
+      connectTimeoutMS: 10000,
+      heartbeatFrequencyMS: 30000,      // keep-alive ping to Atlas every 30s
+      retryWrites: true
+    });
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error(`❌ MongoDB Connection Error: ${error.message}`);

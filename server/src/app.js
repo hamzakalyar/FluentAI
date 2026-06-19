@@ -73,6 +73,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Keep-alive ping endpoint (use with UptimeRobot to prevent Render cold starts)
+app.get('/ping', (req, res) => {
+  res.status(200).send('pong');
+});
+
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.originalUrl} not found` });

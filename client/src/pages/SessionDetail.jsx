@@ -199,7 +199,14 @@ const SessionDetail = () => {
 
   const m = session.metrics || {};
   const tokens = session.transcript?.words || [];
-  const stutters = session.analysis?.stutters || session.metrics?.detectedStutters || [];
+  // IMPORTANT: session.metrics.detectedStutters is a NUMBER (count), not an array.
+  // session.analysis.stutters is the actual array of stutter event objects.
+  // Always prefer the array from analysis; fall back to empty array — never the numeric count.
+  const stutters = Array.isArray(session.analysis?.stutters)
+    ? session.analysis.stutters
+    : Array.isArray(session.metrics?.detectedStutters)
+    ? session.metrics.detectedStutters
+    : [];
   const comparison = session.analysis?.comparison || session.assessmentComparison;
   const nlp = session.analysis?.nlp || session.nlpAnalysis || {};
   const weakSounds = session.analysis?.weakSounds || session.weakSoundsDetected || [];
@@ -468,11 +475,10 @@ const SessionDetail = () => {
                   <div className="text-base text-[var(--text-primary)] leading-[2.2] font-medium whitespace-pre-wrap text-justify">
                     {(() => {
                       const whisperWords = session.transcript?.words || [];
-                      const stutterEvents = (
-                        session.metrics?.detectedStutters ||
-                        session.analysis?.stutters ||
-                        []
-                      );
+                      // detectedStutters is a numeric count — use analysis.stutters (the array)
+                      const stutterEvents = Array.isArray(session.analysis?.stutters)
+                        ? session.analysis.stutters
+                        : [];
 
                       if (whisperWords.length > 0) {
                         return whisperWords.map((token, i) => {
@@ -565,11 +571,10 @@ const SessionDetail = () => {
                         // Check for stutter on this matched word
                         let stutterType = null;
                         if (matchedToken) {
-                          const stutterEvents = (
-                            session.metrics?.detectedStutters ||
-                            session.analysis?.stutters ||
-                            []
-                          );
+                          // detectedStutters is a numeric count — always use analysis.stutters array
+                          const stutterEvents = Array.isArray(session.analysis?.stutters)
+                            ? session.analysis.stutters
+                            : [];
                           const matchedStutter = stutterEvents.find(s =>
                             s.position !== undefined &&
                             Math.abs(s.position - matchedToken.start) < 0.8

@@ -23,6 +23,7 @@ export const sessionsService = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 180000, // 3-minute timeout — Whisper can be slow on free Render tier
     });
   },
 

@@ -9,11 +9,18 @@ const AuthLayout = ({ children, title, subtitle }) => {
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-start justify-center px-16 pb-16 pt-8">
         {/* Background Depth & AI Imagery */}
         <div className="absolute inset-0 z-0" style={{ background: 'linear-gradient(135deg, #0D2A35 0%, #0F172A 100%)' }} />
-        <img 
-          src="file:///C:/Users/hasni/.gemini/antigravity/brain/b4ad2456-e786-40b7-8e37-cda2e35b5bb2/fluent_ai_hero_viz_1778881707290.png" 
-          alt="AI Visualization" 
-          className="absolute inset-0 w-full h-full object-cover opacity-20 blur-[5px] mix-blend-overlay"
-        />
+        <div className="absolute inset-0 w-full h-full opacity-20 blur-[2px] mix-blend-overlay">
+          <svg className="w-full h-full text-teal-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" fill="none">
+            <path d="M 0,450 Q 360,150 720,450 T 1440,450" stroke="currentColor" strokeWidth="2.5" fill="none" />
+            <path d="M 0,350 Q 360,650 720,350 T 1440,350" stroke="currentColor" strokeWidth="1.5" strokeDasharray="6,6" fill="none" />
+            <path d="M 0,550 Q 360,250 720,550 T 1440,550" stroke="currentColor" strokeWidth="1" opacity="0.6" fill="none" />
+            <circle cx="360" cy="300" r="6" fill="currentColor" className="animate-pulse" />
+            <circle cx="720" cy="450" r="8" fill="currentColor" />
+            <circle cx="1080" cy="350" r="6" fill="currentColor" />
+            <line x1="360" y1="300" x2="720" y2="450" stroke="currentColor" strokeWidth="1" strokeDasharray="4,4" />
+            <line x1="720" y1="450" x2="1080" y2="350" stroke="currentColor" strokeWidth="1" strokeDasharray="4,4" />
+          </svg>
+        </div>
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-teal-500/20 rounded-full blur-[100px] animate-pulse" />
         <div className="absolute -bottom-48 -right-24 w-[500px] h-[500px] bg-sky-500/10 rounded-full blur-[120px]" />
 
@@ -50,12 +57,18 @@ const AuthLayout = ({ children, title, subtitle }) => {
       {/* ── Right Side: Auth Form ── */}
       <div className="w-full lg:w-1/2 flex flex-col items-center justify-start p-6 sm:p-12 pt-6 relative z-10 bg-white">
         {/* HCI-Friendly Subtle Image Backdrop */}
-        <div className="absolute bottom-0 right-0 w-full h-full pointer-events-none overflow-hidden opacity-[0.07] z-0">
-          <img 
-            src="file:///C:/Users/hasni/.gemini/antigravity/brain/b4ad2456-e786-40b7-8e37-cda2e35b5bb2/auth_secure_ai_visual_1778881933711.png" 
-            alt="Secure AI Backdrop" 
-            className="absolute bottom-[-10%] right-[-10%] w-[120%] h-[120%] object-contain"
-          />
+        <div className="absolute bottom-0 right-0 w-full h-full pointer-events-none overflow-hidden opacity-[0.05] z-0">
+          <svg 
+            className="absolute bottom-[-10%] right-[-10%] w-[100%] h-[100%] text-teal-600" 
+            viewBox="0 0 400 400" 
+            fill="none" 
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle cx="200" cy="200" r="160" stroke="currentColor" strokeWidth="1" strokeDasharray="8 8" />
+            <circle cx="200" cy="200" r="120" stroke="currentColor" strokeWidth="1.5" />
+            <circle cx="200" cy="200" r="80" stroke="currentColor" strokeWidth="2" />
+            <path d="M200 20 V380 M20 200 H380" stroke="currentColor" strokeWidth="0.5" opacity="0.5" />
+          </svg>
         </div>
 
         {/* Decorative Grid */}

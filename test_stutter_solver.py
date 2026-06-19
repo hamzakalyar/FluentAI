@@ -11,7 +11,17 @@ Usage:
 
 import os
 import sys
+import io
 from pathlib import Path
+
+# Force UTF-8 output encoding for Windows command line compatibility
+if sys.platform.startswith('win'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except AttributeError:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 class Colors:
     GREEN = '\033[92m'
