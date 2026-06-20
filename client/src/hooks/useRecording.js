@@ -27,11 +27,26 @@ export const useRecording = () => {
       setAnalysisError(null);
       setSessionId(null);
       setAnalysisResults(null);
+      chunksRef.current = [];
 
+      let stream;
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        streamRef.current = stream;
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (micError) {
+        console.error('Microphone access denied or unavailable:', micError);
+        setAnalysisError(
+          micError.name === 'NotAllowedError'
+            ? 'Microphone access was denied. Please allow microphone access in your browser settings and try again.'
+            : 'Could not access your microphone. Please check it is connected and not in use by another app.'
+        );
+        setStatus('error');
+        return; // stop here — do NOT fake a recording
+      }
 
+      streamRef.current = stream;
+
+      // Set up AudioContext for waveform visualisation
+      try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         audioContextRef.current = audioCtx;
         const source = audioCtx.createMediaStreamSource(stream);
@@ -39,40 +54,44 @@ export const useRecording = () => {
         analyserNode.fftSize = 256;
         source.connect(analyserNode);
         setAnalyser(analyserNode);
-
-        // Detect best supported MIME type at runtime
-        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : MediaRecorder.isTypeSupported('audio/webm')
-          ? 'audio/webm'
-          : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
-          ? 'audio/ogg;codecs=opus'
-          : '';
-        const recorderOptions = mimeType ? { mimeType } : {};
-        const recorder = new MediaRecorder(stream, recorderOptions);
-        mediaRecorderRef.current = recorder;
-        chunksRef.current = [];
-
-        recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) chunksRef.current.push(e.data);
-        };
-
-        recorder.onstop = () => {
-          // Use detected mimeType so blob is consistent with what was recorded
-          const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' });
-          setAudioBlob(blob);
-          audioBlobRef.current = blob;
-          setStatus('reviewing');
-        };
-
-        // Start with 1-second timeslice: fires ondataavailable every 1s
-        // This prevents data loss if the tab is hidden or recording is very long
-        recorder.start(1000);
-        setStatus('recording');
-      } catch (micError) {
-        console.warn('Microphone access denied. Falling back to simulation.', micError);
-        setStatus('recording');
+      } catch (ctxError) {
+        // Waveform visualisation won't work but recording can still proceed
+        console.warn('AudioContext failed — waveform disabled:', ctxError);
       }
+
+      // Detect best supported MIME type at runtime
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+        ? 'audio/ogg;codecs=opus'
+        : '';
+      const recorderOptions = mimeType ? { mimeType } : {};
+      const recorder = new MediaRecorder(stream, recorderOptions);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' });
+        if (blob.size < 1000) {
+          // Blob is suspiciously small — likely empty/corrupt recording
+          console.warn('Recorded blob is too small:', blob.size, 'bytes');
+          setAnalysisError('Recording was too short or captured no audio. Please try again and speak clearly.');
+          setStatus('error');
+          return;
+        }
+        setAudioBlob(blob);
+        audioBlobRef.current = blob;
+        setStatus('reviewing');
+      };
+
+      // 1-second timeslice: fires ondataavailable every 1s
+      recorder.start(1000);
+      setStatus('recording');
 
       setDuration(0);
       timerRef.current = setInterval(() => {
@@ -81,7 +100,8 @@ export const useRecording = () => {
 
     } catch (err) {
       console.error('Recording initialization error:', err);
-      setStatus('idle');
+      setAnalysisError('Failed to start recording: ' + err.message);
+      setStatus('error');
     }
   }, []);
 
@@ -98,12 +118,15 @@ export const useRecording = () => {
 
   const stopRecording = useCallback(() => {
     if (status === 'recording' || status === 'paused') {
-      if (mediaRecorderRef.current) {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
-        streamRef.current?.getTracks().forEach(track => track.stop());
       } else {
-        setStatus('reviewing');
+        // No recorder — nothing was actually captured
+        setAnalysisError('No audio was captured. Please ensure your microphone is working and try again.');
+        setStatus('error');
+        return;
       }
+      streamRef.current?.getTracks().forEach(track => track.stop());
       // Close the AudioContext to free browser resources (browsers cap at ~6 concurrent)
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
@@ -134,12 +157,18 @@ export const useRecording = () => {
 
   const startAnalysis = useCallback(async (passageId = null, expectedText = null) => {
     const finalBlob = audioBlob || audioBlobRef.current;
-    if (!finalBlob && !localStorage.getItem('is_demo_mode')) return;
-    
+
+    const isDemo = localStorage.getItem('is_demo_mode') === 'true';
+
+    if (!finalBlob && !isDemo) {
+      setAnalysisError('No audio recording found. Please record your voice first before submitting for analysis.');
+      setStatus('error');
+      return;
+    }
+
     setStatus('processing');
     setAnalysisError(null);
 
-    const isDemo = localStorage.getItem('is_demo_mode') === 'true';
     if (isDemo) {
       setTimeout(() => {
         setSessionId('mock-session-1');
@@ -154,11 +183,13 @@ export const useRecording = () => {
       }, 2500);
       return;
     }
-    
+
+    console.log(`📤 Submitting recording for analysis: ${finalBlob.size} bytes, passageId=${passageId}`);
+
     try {
       const response = await sessionsService.analyzeSession(finalBlob, passageId, expectedText);
       const sessionData = response.data.session || response.data;
-      
+
       if (sessionData?._id || sessionData?.id) {
         setSessionId(sessionData._id || sessionData.id);
         setAnalysisResults(sessionData);
