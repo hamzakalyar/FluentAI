@@ -60,6 +60,8 @@ export const AuthProvider = ({ children }) => {
       setToken(newToken);
       setIsAuthenticated(true);
       localStorage.setItem('token', newToken);
+      // CRITICAL: always clear demo flag so real users never get mock data
+      localStorage.removeItem('is_demo_mode');
 
       return response.data;
     } catch (error) {
@@ -76,6 +78,8 @@ export const AuthProvider = ({ children }) => {
       setToken(newToken);
       setIsAuthenticated(true);
       localStorage.setItem('token', newToken);
+      // CRITICAL: always clear demo flag so new real users never get mock data
+      localStorage.removeItem('is_demo_mode');
 
       return response.data;
     } catch (error) {
