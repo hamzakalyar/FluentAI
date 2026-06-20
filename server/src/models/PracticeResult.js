@@ -44,5 +44,9 @@ const practiceResultSchema = new mongoose.Schema({
 });
 
 practiceResultSchema.index({ user: 1, createdAt: -1 });
+// Compound index for by-sound aggregation (most frequent analytics query)
+practiceResultSchema.index({ user: 1, targetSound: 1 });
+// Index for filtering by difficulty
+practiceResultSchema.index({ user: 1, difficulty: 1 });
 
 module.exports = mongoose.model('PracticeResult', practiceResultSchema);

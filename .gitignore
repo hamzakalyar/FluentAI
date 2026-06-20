@@ -1,45 +1,75 @@
-# Dependencies
+# ── Dependencies ──────────────────────────────────────────────────────────────
 node_modules/
 __pycache__/
 *.pyc
+*.pyo
 .venv/
 venv/
 env/
 
-# Environment variables
+# ── Environment Variables ──────────────────────────────────────────────────────
 .env
 .env.local
 .env.production
+.env.*.local
 
-
-# Uploads (audio files)
+# ── Audio Upload Temp Files ────────────────────────────────────────────────────
+# Both services store audio temporarily — never commit these
 server/uploads/*
 !server/uploads/.gitkeep
+audio-service/uploads/*
+!audio-service/uploads/.gitkeep
 
-# Whisper models (large files)
+# ── Large Binary / ML Model Files ─────────────────────────────────────────────
+# ffmpeg binary (202 MB) — download separately, never commit
+*.exe
+*.bin
+ffmpeg*
+ffprobe*
+
+# Whisper & PyTorch model weights
 audio-service/models/
+*.pt
+*.pth
+*.onnx
+*.pkl
+*.safetensors
 
-# IDE
+# ── Stutter-Solver Research Repo ──────────────────────────────────────────────
+# This is a 194 MB external ML research repo — not used in production
+audio-service/Stutter-Solver/
+
+# ── Test & Debug Artifacts ────────────────────────────────────────────────────
+audio-service/dummy.wav
+test_stutter_solver.py
+verify_setup.py
+*.test.wav
+*.test.mp3
+
+# ── IDE & Editor Files ────────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
+.claude/
 
-# OS files
+# ── OS Junk ───────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Logs
+# ── Logs ──────────────────────────────────────────────────────────────────────
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Database (SQLite dev)
+# ── Database (SQLite dev only) ────────────────────────────────────────────────
 *.sqlite
 *.sqlite3
 *.db
 
-# Frontend (Previously excluded)
-# client/
-test-frontend/
-*.exe
+# ── Build Artifacts ───────────────────────────────────────────────────────────
+dist/
+build/
+.next/
