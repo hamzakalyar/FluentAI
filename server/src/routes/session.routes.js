@@ -428,7 +428,10 @@ router.delete('/:id', auth, async (req, res) => {
 });
 
 
-module.exports = router;
+// Export both routers together — module.exports = router (line below)
+// was previously being OVERWRITTEN by module.exports.assessmentRouter further down.
+// Fix: use named exports for both so app.js can destructure cleanly.
+module.exports = { sessionRouter: router };
 
 
 /**

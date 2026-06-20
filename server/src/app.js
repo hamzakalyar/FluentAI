@@ -11,8 +11,7 @@ dotenv.config();
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
-const sessionRoutes = require('./routes/session.routes');
-const { assessmentRouter } = require('./routes/session.routes');
+const { sessionRouter, assessmentRouter } = require('./routes/session.routes');
 const practiceRoutes = require('./routes/practice.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
 const assistantRoutes = require('./routes/assistant.routes');
@@ -58,7 +57,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // API Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/sessions', sessionRoutes);
+app.use('/api/sessions', sessionRouter);
 app.use('/api/assessment-passages', assessmentRouter);
 app.use('/api/practice', practiceRoutes);
 app.use('/api/analytics', analyticsRoutes);
